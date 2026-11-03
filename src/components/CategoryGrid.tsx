@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Flame, Trophy, Swords, Zap, Gift } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ffAlokImg from '../assets/images/ff_alok_solo_1793678913693.jpg';
@@ -8,6 +8,11 @@ import ffKellyImg from '../assets/images/ff_kelly_clash_1793678916143.jpg';
 
 export const CategoryGrid: React.FC = () => {
   const { matches, setSelectedCategory } = useApp();
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+
+  const handleImageError = (id: string) => {
+    setFailedImages((prev: Record<string, boolean>) => ({ ...prev, [id]: true }));
+  };
 
   const getMatchCount = (category: string) => {
     return matches.filter((m) => m.category === category && m.status !== 'completed' && m.status !== 'cancelled').length;
@@ -20,8 +25,9 @@ export const CategoryGrid: React.FC = () => {
       subtitle: 'BERMUDA & PURGATORY',
       badge: 'HOT',
       badgeColor: 'bg-red-500 text-white',
+      gradient: 'from-amber-600 via-rose-700 to-slate-900',
       image: ffAlokImg,
-      fallbackImage: '/assets/images/ff_alok_solo_1793678913693.jpg',
+      fallbackImage: '/images/ff_alok_solo_1793678913693.jpg',
       icon: Flame,
       heroName: 'DJ ALOK',
       count: getMatchCount('solo'),
@@ -32,8 +38,9 @@ export const CategoryGrid: React.FC = () => {
       subtitle: '2 PLAYERS TEAM',
       badge: 'PRO',
       badgeColor: 'bg-blue-600 text-white',
+      gradient: 'from-blue-600 via-indigo-700 to-slate-900',
       image: ffHayatoImg,
-      fallbackImage: '/assets/images/ff_hayato_duo_1793678915489.jpg',
+      fallbackImage: '/images/ff_hayato_duo_1793678915489.jpg',
       icon: Swords,
       heroName: 'HAYATO',
       count: getMatchCount('duo'),
@@ -44,8 +51,9 @@ export const CategoryGrid: React.FC = () => {
       subtitle: '4 PLAYERS CLAN WAR',
       badge: 'HOT',
       badgeColor: 'bg-amber-500 text-white',
+      gradient: 'from-yellow-600 via-orange-700 to-slate-900',
       image: ffChronoImg,
-      fallbackImage: '/assets/images/ff_chrono_squad_1793678915035.jpg',
+      fallbackImage: '/images/ff_chrono_squad_1793678915035.jpg',
       icon: Trophy,
       heroName: 'CHRONO',
       count: getMatchCount('squad'),
@@ -56,8 +64,9 @@ export const CategoryGrid: React.FC = () => {
       subtitle: 'ROUND 7 BOOYAH',
       badge: 'POPULAR',
       badgeColor: 'bg-emerald-600 text-white',
+      gradient: 'from-emerald-600 via-teal-700 to-slate-900',
       image: ffKellyImg,
-      fallbackImage: '/assets/images/ff_kelly_clash_1793678916143.jpg',
+      fallbackImage: '/images/ff_kelly_clash_1793678916143.jpg',
       icon: Zap,
       heroName: 'KELLY',
       count: getMatchCount('cs4v4'),
@@ -71,8 +80,9 @@ export const CategoryGrid: React.FC = () => {
       subtitle: 'HEAD TO HEAD DUEL',
       badge: 'PRO',
       badgeColor: 'bg-purple-600 text-white',
+      gradient: 'from-purple-600 via-indigo-800 to-slate-900',
       image: ffHayatoImg,
-      fallbackImage: '/assets/images/ff_hayato_duo_1793678915489.jpg',
+      fallbackImage: '/images/ff_hayato_duo_1793678915489.jpg',
       icon: Swords,
       heroName: 'IRON CAGE',
       count: getMatchCount('lonewolf'),
@@ -83,8 +93,9 @@ export const CategoryGrid: React.FC = () => {
       subtitle: 'ZERO ENTRY · WIN CASH',
       badge: 'GIVEAWAY',
       badgeColor: 'bg-emerald-500 text-white',
+      gradient: 'from-emerald-500 via-green-700 to-slate-900',
       image: ffAlokImg,
-      fallbackImage: '/assets/images/ff_alok_solo_1793678913693.jpg',
+      fallbackImage: '/images/ff_alok_solo_1793678913693.jpg',
       icon: Gift,
       heroName: 'FREE ENTRY',
       count: getMatchCount('ludo_free'),
@@ -110,6 +121,7 @@ export const CategoryGrid: React.FC = () => {
         <div className="grid grid-cols-2 gap-3">
           {freeFireCategories.map((cat) => {
             const Icon = cat.icon;
+            const hasFailed = failedImages[cat.id];
             return (
               <div
                 key={cat.id}
@@ -117,19 +129,21 @@ export const CategoryGrid: React.FC = () => {
                 className="group relative overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.98] flex flex-col"
               >
                 {/* Image Banner */}
-                <div className="relative aspect-16/9 w-full overflow-hidden bg-slate-900">
-                  <img
-                    src={cat.image}
-                    alt={cat.title}
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      if (!target.src.includes('public') && cat.fallbackImage) {
-                        target.src = cat.fallbackImage;
-                      }
-                    }}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
+                <div className={`relative aspect-16/9 w-full overflow-hidden ${hasFailed ? `bg-gradient-to-br ${cat.gradient}` : 'bg-slate-900'}`}>
+                  {!hasFailed ? (
+                    <img
+                      src={cat.image}
+                      alt={cat.title}
+                      referrerPolicy="no-referrer"
+                      onError={() => handleImageError(cat.id)}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center relative p-3">
+                      <div className="absolute inset-0 bg-black/20" />
+                      <Icon className="w-10 h-10 text-white/40 drop-shadow-md" />
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent" />
 
                   {/* Top Badge */}
@@ -191,6 +205,7 @@ export const CategoryGrid: React.FC = () => {
         <div className="grid grid-cols-2 gap-3">
           {ludoAndFreeCategories.map((cat) => {
             const Icon = cat.icon;
+            const hasFailed = failedImages[cat.id];
             return (
               <div
                 key={cat.id}
@@ -198,19 +213,21 @@ export const CategoryGrid: React.FC = () => {
                 className="group relative overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.98] flex flex-col"
               >
                 {/* Image Banner */}
-                <div className="relative aspect-16/9 w-full overflow-hidden bg-slate-900">
-                  <img
-                    src={cat.image}
-                    alt={cat.title}
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      if (!target.src.includes('public') && cat.fallbackImage) {
-                        target.src = cat.fallbackImage;
-                      }
-                    }}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
+                <div className={`relative aspect-16/9 w-full overflow-hidden ${hasFailed ? `bg-gradient-to-br ${cat.gradient}` : 'bg-slate-900'}`}>
+                  {!hasFailed ? (
+                    <img
+                      src={cat.image}
+                      alt={cat.title}
+                      referrerPolicy="no-referrer"
+                      onError={() => handleImageError(cat.id)}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center relative p-3">
+                      <div className="absolute inset-0 bg-black/20" />
+                      <Icon className="w-10 h-10 text-white/40 drop-shadow-md" />
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent" />
 
                   {/* Top Badge */}

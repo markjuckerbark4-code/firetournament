@@ -106,6 +106,10 @@ const STORAGE_KEYS = {
   SETTINGS: 'lg_settings',
 };
 
+function cleanData<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj));
+}
+
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Navigation states
   const [activeTab, setActiveTab] = useState<ActiveTab>('play');
@@ -248,67 +252,73 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   }, [settings]);
 
-  // Firestore real-time snapshot listeners - ALWAYS sync full state even when empty
+  // Firestore real-time snapshot listeners - Sync state in real-time across all devices & phones
   useEffect(() => {
-    // 1. Matches Snapshot Listener
+    // 1. Matches Snapshot Listener (Global Cross-Device Document)
     const unsubMatches = onSnapshot(
-      collection(db, 'matches'),
-      (snapshot) => {
-        const list: TournamentMatch[] = [];
-        snapshot.forEach((docSnap) => {
-          list.push({ id: docSnap.id, ...(docSnap.data() as Omit<TournamentMatch, 'id'>) });
-        });
-        setMatches(list);
-        localStorage.setItem(STORAGE_KEYS.MATCHES, JSON.stringify(list));
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'matches');
-      }
-    );
-
-    // 2. Results Snapshot Listener
-    const unsubResults = onSnapshot(
-      collection(db, 'results'),
-      (snapshot) => {
-        const list: MatchResult[] = [];
-        snapshot.forEach((docSnap) => {
-          list.push({ id: docSnap.id, ...(docSnap.data() as Omit<MatchResult, 'id'>) });
-        });
-        setResults(list);
-        localStorage.setItem(STORAGE_KEYS.RESULTS, JSON.stringify(list));
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'results');
-      }
-    );
-
-    // 3. Transactions Snapshot Listener
-    const unsubTx = onSnapshot(
-      collection(db, 'transactions'),
-      (snapshot) => {
-        const list: Transaction[] = [];
-        snapshot.forEach((docSnap) => {
-          list.push({ id: docSnap.id, ...(docSnap.data() as Omit<Transaction, 'id'>) });
-        });
-        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setTransactions(list);
-        localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(list));
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'transactions');
-      }
-    );
-
-    // 4. Settings Snapshot Listener
-    const unsubSettings = onSnapshot(
-      doc(db, 'settings', 'general'),
+      doc(db, 'users', 'global_matches'),
       (docSnap) => {
         if (docSnap.exists()) {
-          setSettings(docSnap.data() as AppSettings);
+          const data = docSnap.data();
+          if (data && Array.isArray(data.list)) {
+            setMatches(data.list);
+            localStorage.setItem(STORAGE_KEYS.MATCHES, JSON.stringify(data.list));
+          }
         }
       },
       (error) => {
-        handleFirestoreError(error, OperationType.GET, 'settings/general');
+        console.warn('Matches sync listener notice:', error);
+      }
+    );
+
+    // 2. Results Snapshot Listener (Global Cross-Device Document)
+    const unsubResults = onSnapshot(
+      doc(db, 'users', 'global_results'),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data && Array.isArray(data.list)) {
+            setResults(data.list);
+            localStorage.setItem(STORAGE_KEYS.RESULTS, JSON.stringify(data.list));
+          }
+        }
+      },
+      (error) => {
+        console.warn('Results sync listener notice:', error);
+      }
+    );
+
+    // 3. Transactions Snapshot Listener (Global Cross-Device Document)
+    const unsubTx = onSnapshot(
+      doc(db, 'users', 'global_transactions'),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data && Array.isArray(data.list)) {
+            setTransactions(data.list);
+            localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(data.list));
+          }
+        }
+      },
+      (error) => {
+        console.warn('Transactions sync listener notice:', error);
+      }
+    );
+
+    // 4. Settings Snapshot Listener (Global Cross-Device Document)
+    const unsubSettings = onSnapshot(
+      doc(db, 'users', 'global_settings'),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data && data.settings) {
+            setSettings(data.settings);
+            localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(data.settings));
+          }
+        }
+      },
+      (error) => {
+        console.warn('Settings sync listener notice:', error);
       }
     );
 
@@ -318,13 +328,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       (snapshot) => {
         const list: UserProfile[] = [];
         snapshot.forEach((docSnap) => {
-          list.push({ id: docSnap.id, ...(docSnap.data() as Omit<UserProfile, 'id'>) });
+          // Exclude internal global documents and test documents
+          if (docSnap.id.startsWith('global_') || docSnap.id.startsWith('test_') || docSnap.id === 'connection') {
+            return;
+          }
+          const uData = docSnap.data();
+          if (uData && (uData.email || uData.displayName)) {
+            list.push({ id: docSnap.id, ...(uData as Omit<UserProfile, 'id'>) });
+          }
         });
+
         setAllUsers((prev) => {
           const mergedMap = new Map<string, UserProfile>();
           // Keep default admin user in pool
           mergedMap.set(INITIAL_ADMIN_USER.id, INITIAL_ADMIN_USER);
-          prev.forEach((u) => mergedMap.set(u.id, u));
+          prev.forEach((u) => {
+            if (!u.id.startsWith('global_') && !u.id.startsWith('test_')) {
+              mergedMap.set(u.id, u);
+            }
+          });
           list.forEach((u) => mergedMap.set(u.id, u));
           const result = Array.from(mergedMap.values());
           localStorage.setItem(STORAGE_KEYS.ALL_USERS, JSON.stringify(result));
@@ -344,7 +366,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         });
       },
       (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'users');
+        console.warn('Users sync listener notice:', error);
       }
     );
 
@@ -642,14 +664,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       createdAt: new Date().toISOString()
     };
 
-    setTransactions((prev) => [newTx, ...prev]);
-    broadcastSync({ transactions: [newTx, ...transactions] });
+    const nextTxList = [newTx, ...transactions.filter((t) => t.id !== newTx.id)];
+    setTransactions(nextTxList);
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(nextTxList));
+    broadcastSync({ transactions: nextTxList });
 
-    // Save to Firestore
+    // Save to Firestore users/global_transactions for cross-device sync
     try {
-      await setDoc(doc(db, 'transactions', newTx.id), newTx);
-    } catch {
-      // offline fallback
+      await setDoc(doc(db, 'users', 'global_transactions'), {
+        list: cleanData(nextTxList),
+        updatedAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('Error syncing deposit to Firestore:', err);
     }
 
     return { 
@@ -721,17 +748,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       createdAt: new Date().toISOString()
     };
 
-    setTransactions((prev) => [newTx, ...prev]);
-    broadcastSync({ transactions: [newTx, ...transactions], currentUser: updatedUser });
+    const nextTxList = [newTx, ...transactions.filter((t) => t.id !== newTx.id)];
+    setTransactions(nextTxList);
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(nextTxList));
+    broadcastSync({ transactions: nextTxList, currentUser: updatedUser });
 
-    // Save to Firestore
+    // Save to Firestore users/global_transactions and update user balance
     try {
-      await setDoc(doc(db, 'transactions', newTx.id), newTx);
-      await updateDoc(doc(db, 'users', currentUser.id), {
-        gameBalance: newGameBal
+      await setDoc(doc(db, 'users', 'global_transactions'), {
+        list: cleanData(nextTxList),
+        updatedAt: new Date().toISOString()
       });
-    } catch {
-      // offline fallback
+      await updateDoc(doc(db, 'users', currentUser.id), cleanData({
+        gameBalance: newGameBal
+      }));
+    } catch (err) {
+      console.error('Error syncing withdrawal to Firestore:', err);
     }
 
     return { 
@@ -819,27 +851,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ffUid: details.ffUid.trim()
     };
 
-    setMatches((prev) => prev.map((m) => (m.id === matchId ? updatedMatch : m)));
+    const nextMatches = matches.map((m) => (m.id === matchId ? updatedMatch : m));
+    setMatches(nextMatches);
     setCurrentUser(updatedUser);
     setAllUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+    localStorage.setItem(STORAGE_KEYS.MATCHES, JSON.stringify(nextMatches));
+    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
 
-    broadcastSync({ matches, currentUser: updatedUser });
+    broadcastSync({ matches: nextMatches, currentUser: updatedUser });
 
     // Save to Firestore
     try {
-      await updateDoc(doc(db, 'matches', matchId), {
-        bookedSlots: updatedMatch.bookedSlots,
-        participants: updatedMatch.participants
+      await setDoc(doc(db, 'users', 'global_matches'), {
+        list: cleanData(nextMatches),
+        updatedAt: new Date().toISOString()
       });
-      await updateDoc(doc(db, 'users', currentUser.id), {
+      await updateDoc(doc(db, 'users', currentUser.id), cleanData({
         mainBalance: newMain,
         gameBalance: newGame,
         matchesJoined: updatedUser.matchesJoined,
         ffIgn: details.ign.trim(),
         ffUid: details.ffUid.trim()
-      });
-    } catch {
-      // offline fallback
+      }));
+    } catch (err) {
+      console.error('Error syncing joinMatch to Firestore:', err);
     }
 
     return { 
@@ -858,36 +893,53 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       createdAt: new Date().toISOString()
     };
 
-    setMatches((prev) => [newMatch, ...prev]);
-    broadcastSync({ matches: [newMatch, ...matches] });
+    const nextMatches = [newMatch, ...matches.filter((m) => m.id !== newMatch.id)];
+    setMatches(nextMatches);
+    localStorage.setItem(STORAGE_KEYS.MATCHES, JSON.stringify(nextMatches));
+    broadcastSync({ matches: nextMatches });
 
     try {
-      await setDoc(doc(db, 'matches', newMatch.id), newMatch);
-    } catch {
-      // offline fallback
+      await setDoc(doc(db, 'users', 'global_matches'), {
+        list: cleanData(nextMatches),
+        updatedAt: new Date().toISOString()
+      });
+      console.log('Match successfully created and synced to Firestore users/global_matches:', newMatch.id);
+    } catch (err) {
+      console.error('Error syncing createMatch to Firestore:', err);
     }
   };
 
   const updateMatch = async (matchId: string, updates: Partial<TournamentMatch>) => {
-    setMatches((prev) => prev.map((m) => (m.id === matchId ? { ...m, ...updates } : m)));
+    const nextMatches = matches.map((m) => (m.id === matchId ? { ...m, ...updates } : m));
+    setMatches(nextMatches);
+    localStorage.setItem(STORAGE_KEYS.MATCHES, JSON.stringify(nextMatches));
+    broadcastSync({ matches: nextMatches });
+
     try {
-      await updateDoc(doc(db, 'matches', matchId), updates);
-    } catch {
-      // offline fallback
+      await setDoc(doc(db, 'users', 'global_matches'), {
+        list: cleanData(nextMatches),
+        updatedAt: new Date().toISOString()
+      });
+      console.log('Match successfully updated in Firestore users/global_matches:', matchId);
+    } catch (err) {
+      console.error('Error syncing updateMatch to Firestore:', err);
     }
   };
 
   const deleteMatch = async (matchId: string) => {
-    setMatches((prev) => {
-      const updated = prev.filter((m) => m.id !== matchId);
-      localStorage.setItem(STORAGE_KEYS.MATCHES, JSON.stringify(updated));
-      broadcastSync({ matches: updated });
-      return updated;
-    });
+    const nextMatches = matches.filter((m) => m.id !== matchId);
+    setMatches(nextMatches);
+    localStorage.setItem(STORAGE_KEYS.MATCHES, JSON.stringify(nextMatches));
+    broadcastSync({ matches: nextMatches });
+
     try {
-      await deleteDoc(doc(db, 'matches', matchId));
-    } catch {
-      // offline fallback
+      await setDoc(doc(db, 'users', 'global_matches'), {
+        list: cleanData(nextMatches),
+        updatedAt: new Date().toISOString()
+      });
+      console.log('Match successfully deleted in Firestore users/global_matches:', matchId);
+    } catch (err) {
+      console.error('Error syncing deleteMatch to Firestore:', err);
     }
   };
 
@@ -972,14 +1024,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ...targetMatch,
       status: 'completed'
     };
-    setMatches((prev) => prev.map((m) => (m.id === targetMatch.id ? updatedMatch : m)));
-    setResults((prev) => [newResult, ...prev]);
+    const nextMatches = matches.map((m) => (m.id === targetMatch.id ? updatedMatch : m));
+    const nextResults = [newResult, ...results.filter((r) => r.id !== newResult.id)];
+    setMatches(nextMatches);
+    setResults(nextResults);
+    localStorage.setItem(STORAGE_KEYS.MATCHES, JSON.stringify(nextMatches));
+    localStorage.setItem(STORAGE_KEYS.RESULTS, JSON.stringify(nextResults));
+    broadcastSync({ matches: nextMatches, results: nextResults });
 
     try {
-      await setDoc(doc(db, 'results', newResult.id), newResult);
-      await updateDoc(doc(db, 'matches', targetMatch.id), { status: 'completed' });
-    } catch {
-      // offline fallback
+      await setDoc(doc(db, 'users', 'global_results'), {
+        list: cleanData(nextResults),
+        updatedAt: new Date().toISOString()
+      });
+      await setDoc(doc(db, 'users', 'global_matches'), {
+        list: cleanData(nextMatches),
+        updatedAt: new Date().toISOString()
+      });
+      console.log('Results and completed match synced to Firestore users/global_*');
+    } catch (err) {
+      console.error('Error syncing results to Firestore:', err);
     }
 
     return { 
@@ -1024,10 +1088,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     broadcastSync({ transactions: nextTxList, allUsers });
 
     try {
-      await updateDoc(doc(db, 'transactions', txId), { status: 'approved' });
+      await setDoc(doc(db, 'users', 'global_transactions'), {
+        list: cleanData(nextTxList),
+        updatedAt: new Date().toISOString()
+      });
       if (targetUpdatedUser) {
-        await updateDoc(doc(db, 'users', tx.userId), { mainBalance: targetUpdatedUser.mainBalance });
+        await updateDoc(doc(db, 'users', tx.userId), cleanData({ mainBalance: targetUpdatedUser.mainBalance }));
       }
+      console.log('Deposit approval synced to Firestore users/global_transactions:', txId);
     } catch (err) {
       console.error('Error approving deposit in Firestore:', err);
     }
@@ -1045,10 +1113,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     broadcastSync({ transactions: nextTxList });
 
     try {
-      await updateDoc(doc(db, 'transactions', txId), { 
-        status: 'rejected', 
-        rejectReason: reason || 'Invalid Transaction ID' 
+      await setDoc(doc(db, 'users', 'global_transactions'), {
+        list: cleanData(nextTxList),
+        updatedAt: new Date().toISOString()
       });
+      console.log('Deposit rejection synced to Firestore users/global_transactions:', txId);
     } catch (err) {
       console.error('Error rejecting deposit in Firestore:', err);
     }
@@ -1066,7 +1135,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     broadcastSync({ transactions: nextTxList });
 
     try {
-      await updateDoc(doc(db, 'transactions', txId), { status: 'approved' });
+      await setDoc(doc(db, 'users', 'global_transactions'), {
+        list: cleanData(nextTxList),
+        updatedAt: new Date().toISOString()
+      });
+      console.log('Withdrawal approval synced to Firestore users/global_transactions:', txId);
     } catch (err) {
       console.error('Error approving withdrawal in Firestore:', err);
     }
@@ -1108,13 +1181,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     broadcastSync({ transactions: nextTxList, allUsers });
 
     try {
-      await updateDoc(doc(db, 'transactions', txId), { 
-        status: 'rejected', 
-        rejectReason: reason || 'Rejected by Admin' 
+      await setDoc(doc(db, 'users', 'global_transactions'), {
+        list: cleanData(nextTxList),
+        updatedAt: new Date().toISOString()
       });
       if (targetUpdatedUser) {
-        await updateDoc(doc(db, 'users', tx.userId), { gameBalance: targetUpdatedUser.gameBalance });
+        await updateDoc(doc(db, 'users', tx.userId), cleanData({ gameBalance: targetUpdatedUser.gameBalance }));
       }
+      console.log('Withdrawal rejection refunded and synced to Firestore users/global_transactions:', txId);
     } catch (err) {
       console.error('Error rejecting withdrawal in Firestore:', err);
     }
@@ -1160,10 +1234,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     if (targetUpdated) {
       try {
-        await updateDoc(doc(db, 'users', userId), {
+        await updateDoc(doc(db, 'users', userId), cleanData({
           mainBalance: (targetUpdated as UserProfile).mainBalance,
           gameBalance: (targetUpdated as UserProfile).gameBalance
-        });
+        }));
+        console.log('Adjusted balance synced to Firestore users:', userId);
       } catch (err) {
         console.error('Error adjusting balance in Firestore:', err);
       }
@@ -1190,7 +1265,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     try {
-      await updateDoc(doc(db, 'users', userId), { isBanned: targetBanned });
+      await updateDoc(doc(db, 'users', userId), cleanData({ isBanned: targetBanned }));
+      console.log('User ban status synced to Firestore users:', userId);
     } catch (err) {
       console.error('Error toggling ban in Firestore:', err);
     }
@@ -1202,7 +1278,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
     broadcastSync({ settings: updated });
     try {
-      await setDoc(doc(db, 'settings', 'general'), updated, { merge: true });
+      await setDoc(doc(db, 'users', 'global_settings'), {
+        settings: cleanData(updated),
+        updatedAt: new Date().toISOString()
+      });
+      console.log('Settings successfully synced to Firestore users/global_settings:', updated);
     } catch (err) {
       console.error('Error updating settings in Firestore:', err);
     }
