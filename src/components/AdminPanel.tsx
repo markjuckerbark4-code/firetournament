@@ -117,8 +117,12 @@ export const AdminPanel: React.FC = () => {
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [adminAuthError, setAdminAuthError] = useState('');
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    if (typeof window !== 'undefined' && sessionStorage.getItem('admin_session_auth') === 'true') {
-      return true;
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage && sessionStorage.getItem('admin_session_auth') === 'true') {
+        return true;
+      }
+    } catch {
+      // Storage access blocked or restricted
     }
     return currentUser?.role === 'admin' && (currentUser?.email === 'esakhan5479@gmail.com' || currentUser?.email === 'markjuckerbark4@gmail.com');
   });
@@ -126,7 +130,13 @@ export const AdminPanel: React.FC = () => {
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (adminPasswordInput.trim() === 'ESA006##@@') {
-      sessionStorage.setItem('admin_session_auth', 'true');
+      try {
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          sessionStorage.setItem('admin_session_auth', 'true');
+        }
+      } catch {
+        // Safe catch
+      }
       quickDemoLogin('admin');
       setIsAdminAuthenticated(true);
       setAdminAuthError('');
@@ -136,7 +146,13 @@ export const AdminPanel: React.FC = () => {
   };
 
   const handleLogoutAdmin = () => {
-    sessionStorage.removeItem('admin_session_auth');
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        sessionStorage.removeItem('admin_session_auth');
+      }
+    } catch {
+      // Safe catch
+    }
     setIsAdminAuthenticated(false);
     setAdminPasswordInput('');
   };
@@ -267,14 +283,19 @@ export const AdminPanel: React.FC = () => {
   };
 
   // Filtered Tournaments
-  const filteredMatches = matches.filter((m) => {
-    const q = tournamentSearch.toLowerCase().trim();
+  const filteredMatches = (matches || []).filter((m) => {
+    if (!m) return false;
+    const q = (tournamentSearch || '').toLowerCase().trim();
+    const title = m.title || '';
+    const category = m.category || '';
+    const map = m.map || '';
+    const id = m.id || '';
     const matchesQuery = 
       !q || 
-      m.title.toLowerCase().includes(q) || 
-      m.category.toLowerCase().includes(q) || 
-      m.map.toLowerCase().includes(q) ||
-      m.id.toLowerCase().includes(q);
+      title.toLowerCase().includes(q) || 
+      category.toLowerCase().includes(q) || 
+      map.toLowerCase().includes(q) ||
+      id.toLowerCase().includes(q);
 
     if (!matchesQuery) return false;
     if (tournamentFilter === 'upcoming') return m.status === 'upcoming';
@@ -283,24 +304,31 @@ export const AdminPanel: React.FC = () => {
     return true;
   });
 
-  const pendingTransactionsCount = transactions.filter((t) => t.status === 'pending').length;
+  const pendingTransactionsCount = (transactions || []).filter((t) => t && t.status === 'pending').length;
 
-  const filteredTransactions = transactions.filter((t) => {
+  const filteredTransactions = (transactions || []).filter((t) => {
+    if (!t) return false;
     if (txFilter === 'pending') return t.status === 'pending';
     if (txFilter === 'deposit') return t.type === 'deposit';
     if (txFilter === 'withdraw') return t.type === 'withdraw';
     return true;
   });
 
-  const filteredUsers = allUsers.filter((u) => {
-    const q = userSearchQuery.toLowerCase().trim();
+  const filteredUsers = (allUsers || []).filter((u) => {
+    if (!u) return false;
+    const q = (userSearchQuery || '').toLowerCase().trim();
+    const name = u.displayName || '';
+    const email = u.email || '';
+    const phone = u.phone || '';
+    const uid = u.ffUid || '';
+    const ign = u.ffIgn || '';
     return (
       !q ||
-      u.displayName.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
-      u.phone.includes(q) ||
-      u.ffUid.includes(q) ||
-      u.ffIgn.toLowerCase().includes(q)
+      name.toLowerCase().includes(q) ||
+      email.toLowerCase().includes(q) ||
+      phone.includes(q) ||
+      uid.includes(q) ||
+      ign.toLowerCase().includes(q)
     );
   });
 
@@ -537,7 +565,7 @@ export const AdminPanel: React.FC = () => {
                 </div>
               ) : (
                 filteredMatches.map((m) => {
-                  const matchNumber = m.id.replace('match_', '').replace(/[^0-9]/g, '') || '101';
+                  const matchNumber = (m.id || '').replace('match_', '').replace(/[^0-9]/g, '') || '101';
                   const isUpcoming = m.status === 'upcoming';
                   const isOngoing = m.status === 'ongoing';
                   const isCancelled = m.status === 'cancelled';
@@ -551,7 +579,7 @@ export const AdminPanel: React.FC = () => {
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <span className="bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] font-black px-2 py-0.5 rounded-md uppercase">
-                            {m.category === 'cs4v4' ? 'CS 4 VS 4' : m.category.toUpperCase()}
+                            {(m.category || '') === 'cs4v4' ? 'CS 4 VS 4' : (m.category || 'MATCH').toUpperCase()}
                           </span>
                           <span className="text-slate-300 font-bold text-xs font-mono">
                             Match #{matchNumber}
@@ -567,7 +595,7 @@ export const AdminPanel: React.FC = () => {
                             ? 'bg-slate-700/40 text-slate-400 border border-slate-600'
                             : 'bg-sky-500/20 text-sky-400 border border-sky-500/40'
                         }`}>
-                          {m.status.toUpperCase()}
+                          {(m.status || 'UPCOMING').toUpperCase()}
                         </span>
                       </div>
 
@@ -773,13 +801,22 @@ export const AdminPanel: React.FC = () => {
                       <div className="text-[9.5px] text-slate-400 flex items-center justify-between">
                         <span>নিবন্ধনের তারিখ:</span>
                         <span className="text-slate-400 font-mono">
-                          {new Date(u.createdAt).toLocaleDateString('bn-BD', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                          {(() => {
+                            try {
+                              const d = typeof u.createdAt === 'object' && u.createdAt !== null && 'seconds' in (u.createdAt as any)
+                                ? new Date((u.createdAt as any).seconds * 1000)
+                                : new Date(u.createdAt);
+                              return isNaN(d.getTime()) ? 'সাম্প্রতিক' : d.toLocaleDateString('bn-BD', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              });
+                            } catch {
+                              return 'সাম্প্রতিক';
+                            }
+                          })()}
                         </span>
                       </div>
                     )}
