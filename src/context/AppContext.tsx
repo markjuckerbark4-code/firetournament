@@ -330,6 +330,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           localStorage.setItem(STORAGE_KEYS.ALL_USERS, JSON.stringify(result));
           return result;
         });
+
+        // Real-time active user sync: if admin approved deposit or updated balance, update currentUser instantly
+        setCurrentUser((curr) => {
+          if (!curr) return null;
+          const fresh = list.find((u) => u.id === curr.id || (u.email && curr.email && u.email.toLowerCase() === curr.email.toLowerCase()));
+          if (fresh) {
+            const merged = { ...curr, ...fresh, password: fresh.password || curr.password };
+            localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(merged));
+            return merged;
+          }
+          return curr;
+        });
       },
       (error) => {
         handleFirestoreError(error, OperationType.LIST, 'users');
@@ -349,8 +361,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               phone: '01700000000',
               ffUid: '123456789',
               ffIgn: 'LG_PLAYER',
-              mainBalance: 100,
-              gameBalance: 50,
+              mainBalance: 0,
+              gameBalance: 0,
               referralCode: `LGBD${Math.floor(1000 + Math.random() * 9000)}`,
               matchesJoined: 0,
               totalWon: 0,
@@ -532,7 +544,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       phone: trimmedPhone,
       ffUid: trimmedFfUid,
       ffIgn: trimmedName,
-      mainBalance: 50, // Welcome bonus of 50 BDT
+      mainBalance: 0, // Registration balance starts strictly at 0 BDT
       gameBalance: 0,
       referralCode: `LGBD${Math.floor(1000 + Math.random() * 9000)}`,
       matchesJoined: 0,
@@ -646,7 +658,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
   };
 
-  // Dual-Wallet Operations: Withdrawal
+  // Dual-Wallet Operations: Withdrawal (ONLY from Winning Account / gameBalance, minimum 50 BDT)
   const submitWithdraw = async (params: {
     gateway: GatewayType;
     amount: number;
@@ -657,14 +669,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return { success: false, message: 'Please login to withdraw.' };
     }
 
-    const totalAvailable = currentUser.mainBalance + currentUser.gameBalance;
+    const minWithdraw = Math.max(50, settings.minWithdraw || 50);
 
-    if (params.amount < settings.minWithdraw) {
-      return { success: false, message: `Minimum withdrawal amount is ৳${settings.minWithdraw}.` };
+    if (params.amount < minWithdraw) {
+      return { success: false, message: `সর্বনিম্ন উত্তোলনের পরিমাণ ৳${minWithdraw}।` };
     }
 
-    if (params.amount > totalAvailable) {
-      return { success: false, message: `Insufficient balance! Your available balance is ৳${totalAvailable}.` };
+    if (params.amount > currentUser.gameBalance) {
+      return { 
+        success: false, 
+        message: `উত্তোলন শুধুমাত্র উইনিং ব্যালেন্স (Winning Balance) থেকে করা যাবে। আপনার বর্তমান উইনিং ব্যালেন্স ৳${currentUser.gameBalance.toFixed(2)}। (ডিপোজিটকৃত মেইন ব্যালেন্স দিয়ে টুর্নামেন্টে জয়েন ও ডায়মন্ড কিনতে পারবেন)` 
+      };
     }
 
     // Check daily withdrawal limit
@@ -677,30 +692,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const remainingLimit = Math.max(0, settings.maxWithdrawPerDay - userTodayWithdrawals);
       return { 
         success: false, 
-        message: `Daily limit reached! You can withdraw at most ৳${remainingLimit} more today (Limit: ৳${settings.maxWithdrawPerDay}/day).` 
+        message: `দৈনিক উত্তোলনের সীমা শেষ! আপনি আজকে আর সর্বোচ্চ ৳${remainingLimit} উত্তোলন করতে পারবেন (দৈনিক সীমা: ৳${settings.maxWithdrawPerDay})।` 
       };
     }
 
-    // Immediate deduction as per requirement
-    let newGameBal = currentUser.gameBalance;
-    let newMainBal = currentUser.mainBalance;
-    let remainingToDeduct = params.amount;
-
-    if (newGameBal >= remainingToDeduct) {
-      newGameBal -= remainingToDeduct;
-    } else {
-      remainingToDeduct -= newGameBal;
-      newGameBal = 0;
-      newMainBal = Math.max(0, newMainBal - remainingToDeduct);
-    }
+    // Immediate deduction exclusively from Winning Balance (gameBalance)
+    const newGameBal = currentUser.gameBalance - params.amount;
 
     const updatedUser = {
       ...currentUser,
-      gameBalance: newGameBal,
-      mainBalance: newMainBal
+      gameBalance: newGameBal
     };
     setCurrentUser(updatedUser);
     setAllUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
 
     const newTx: Transaction = {
       id: `wth_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
@@ -723,8 +728,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       await setDoc(doc(db, 'transactions', newTx.id), newTx);
       await updateDoc(doc(db, 'users', currentUser.id), {
-        gameBalance: newGameBal,
-        mainBalance: newMainBal
+        gameBalance: newGameBal
       });
     } catch {
       // offline fallback
@@ -732,7 +736,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     return { 
       success: true, 
-      message: 'Withdrawal request submitted! ৳' + params.amount + ' has been held pending admin payout.' 
+      message: `উইথড্র রিকোয়েস্ট সফলভাবে সাবমিট হয়েছে! উইনিং ব্যালেন্স থেকে ৳${params.amount} হোল্ড করা হয়েছে। এডমিন যাচাই করে টাকা পাঠিয়ে দেবেন।` 
     };
   };
 
@@ -989,33 +993,43 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const tx = transactions.find((t) => t.id === txId);
     if (!tx || tx.type !== 'deposit' || tx.status !== 'pending') return;
 
+    let targetUpdatedUser: UserProfile | undefined;
     // Credit to user's Main Account
-    setAllUsers((prev) =>
-      prev.map((u) => {
+    setAllUsers((prev) => {
+      const updatedList = prev.map((u) => {
         if (u.id === tx.userId) {
-          const updatedBal = u.mainBalance + tx.amount;
-          try {
-            updateDoc(doc(db, 'users', u.id), { mainBalance: updatedBal });
-          } catch {
-            // fallback
-          }
-          return { ...u, mainBalance: updatedBal };
+          const updatedBal = (u.mainBalance || 0) + tx.amount;
+          targetUpdatedUser = { ...u, mainBalance: updatedBal };
+          return targetUpdatedUser;
         }
         return u;
-      })
-    );
+      });
+      localStorage.setItem(STORAGE_KEYS.ALL_USERS, JSON.stringify(updatedList));
+      return updatedList;
+    });
 
     if (currentUser && currentUser.id === tx.userId) {
-      setCurrentUser((prev) => (prev ? { ...prev, mainBalance: prev.mainBalance + tx.amount } : null));
+      setCurrentUser((prev) => {
+        if (!prev) return null;
+        const updated = { ...prev, mainBalance: (prev.mainBalance || 0) + tx.amount };
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updated));
+        return updated;
+      });
     }
 
     const updatedTx: Transaction = { ...tx, status: 'approved' };
-    setTransactions((prev) => prev.map((t) => (t.id === txId ? updatedTx : t)));
+    const nextTxList = transactions.map((t) => (t.id === txId ? updatedTx : t));
+    setTransactions(nextTxList);
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(nextTxList));
+    broadcastSync({ transactions: nextTxList, allUsers });
 
     try {
       await updateDoc(doc(db, 'transactions', txId), { status: 'approved' });
-    } catch {
-      // fallback
+      if (targetUpdatedUser) {
+        await updateDoc(doc(db, 'users', tx.userId), { mainBalance: targetUpdatedUser.mainBalance });
+      }
+    } catch (err) {
+      console.error('Error approving deposit in Firestore:', err);
     }
   };
 
@@ -1025,15 +1039,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!tx || tx.type !== 'deposit' || tx.status !== 'pending') return;
 
     const updatedTx: Transaction = { ...tx, status: 'rejected', rejectReason: reason || 'Invalid Transaction ID' };
-    setTransactions((prev) => prev.map((t) => (t.id === txId ? updatedTx : t)));
+    const nextTxList = transactions.map((t) => (t.id === txId ? updatedTx : t));
+    setTransactions(nextTxList);
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(nextTxList));
+    broadcastSync({ transactions: nextTxList });
 
     try {
       await updateDoc(doc(db, 'transactions', txId), { 
         status: 'rejected', 
         rejectReason: reason || 'Invalid Transaction ID' 
       });
-    } catch {
-      // fallback
+    } catch (err) {
+      console.error('Error rejecting deposit in Firestore:', err);
     }
   };
 
@@ -1043,50 +1060,63 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!tx || tx.type !== 'withdraw' || tx.status !== 'pending') return;
 
     const updatedTx: Transaction = { ...tx, status: 'approved' };
-    setTransactions((prev) => prev.map((t) => (t.id === txId ? updatedTx : t)));
+    const nextTxList = transactions.map((t) => (t.id === txId ? updatedTx : t));
+    setTransactions(nextTxList);
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(nextTxList));
+    broadcastSync({ transactions: nextTxList });
 
     try {
       await updateDoc(doc(db, 'transactions', txId), { status: 'approved' });
-    } catch {
-      // fallback
+    } catch (err) {
+      console.error('Error approving withdrawal in Firestore:', err);
     }
   };
 
-  // Transaction Manager: Reject Withdraw (Refunds balance back)
+  // Transaction Manager: Reject Withdraw (Refunds balance back to gameBalance)
   const rejectWithdraw = async (txId: string, reason?: string) => {
     const tx = transactions.find((t) => t.id === txId);
     if (!tx || tx.type !== 'withdraw' || tx.status !== 'pending') return;
 
+    let targetUpdatedUser: UserProfile | undefined;
     // Refund back to user's gameBalance
-    setAllUsers((prev) =>
-      prev.map((u) => {
+    setAllUsers((prev) => {
+      const updatedList = prev.map((u) => {
         if (u.id === tx.userId) {
-          const refundedGameBal = u.gameBalance + tx.amount;
-          try {
-            updateDoc(doc(db, 'users', u.id), { gameBalance: refundedGameBal });
-          } catch {
-            // fallback
-          }
-          return { ...u, gameBalance: refundedGameBal };
+          const refundedGameBal = (u.gameBalance || 0) + tx.amount;
+          targetUpdatedUser = { ...u, gameBalance: refundedGameBal };
+          return targetUpdatedUser;
         }
         return u;
-      })
-    );
+      });
+      localStorage.setItem(STORAGE_KEYS.ALL_USERS, JSON.stringify(updatedList));
+      return updatedList;
+    });
 
     if (currentUser && currentUser.id === tx.userId) {
-      setCurrentUser((prev) => (prev ? { ...prev, gameBalance: prev.gameBalance + tx.amount } : null));
+      setCurrentUser((prev) => {
+        if (!prev) return null;
+        const updated = { ...prev, gameBalance: (prev.gameBalance || 0) + tx.amount };
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updated));
+        return updated;
+      });
     }
 
     const updatedTx: Transaction = { ...tx, status: 'rejected', rejectReason: reason || 'Rejected by Admin' };
-    setTransactions((prev) => prev.map((t) => (t.id === txId ? updatedTx : t)));
+    const nextTxList = transactions.map((t) => (t.id === txId ? updatedTx : t));
+    setTransactions(nextTxList);
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(nextTxList));
+    broadcastSync({ transactions: nextTxList, allUsers });
 
     try {
       await updateDoc(doc(db, 'transactions', txId), { 
         status: 'rejected', 
         rejectReason: reason || 'Rejected by Admin' 
       });
-    } catch {
-      // fallback
+      if (targetUpdatedUser) {
+        await updateDoc(doc(db, 'users', tx.userId), { gameBalance: targetUpdatedUser.gameBalance });
+      }
+    } catch (err) {
+      console.error('Error rejecting withdrawal in Firestore:', err);
     }
   };
 
@@ -1095,11 +1125,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     userId: string,
     params: { type: 'add' | 'remove' | 'set'; account: 'main' | 'game'; amount: number }
   ) => {
-    setAllUsers((prev) =>
-      prev.map((u) => {
+    let targetUpdated: UserProfile | null = null;
+    setAllUsers((prev) => {
+      const updatedList = prev.map((u) => {
         if (u.id === userId) {
-          let updatedMain = u.mainBalance;
-          let updatedGame = u.gameBalance;
+          let updatedMain = u.mainBalance || 0;
+          let updatedGame = u.gameBalance || 0;
 
           if (params.account === 'main') {
             if (params.type === 'add') updatedMain += params.amount;
@@ -1111,50 +1142,69 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             else updatedGame = Math.max(0, params.amount);
           }
 
-          try {
-            updateDoc(doc(db, 'users', userId), {
-              mainBalance: updatedMain,
-              gameBalance: updatedGame
-            });
-          } catch {
-            // fallback
-          }
-
-          const updatedUser = { ...u, mainBalance: updatedMain, gameBalance: updatedGame };
-          if (currentUser?.id === userId) {
-            setCurrentUser(updatedUser);
-          }
-          return updatedUser;
+          targetUpdated = { ...u, mainBalance: updatedMain, gameBalance: updatedGame };
+          return targetUpdated;
         }
         return u;
-      })
-    );
+      });
+
+      if (currentUser?.id === userId && targetUpdated) {
+        setCurrentUser(targetUpdated);
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(targetUpdated));
+      }
+
+      localStorage.setItem(STORAGE_KEYS.ALL_USERS, JSON.stringify(updatedList));
+      broadcastSync({ allUsers: updatedList });
+      return updatedList;
+    });
+
+    if (targetUpdated) {
+      try {
+        await updateDoc(doc(db, 'users', userId), {
+          mainBalance: (targetUpdated as UserProfile).mainBalance,
+          gameBalance: (targetUpdated as UserProfile).gameBalance
+        });
+      } catch (err) {
+        console.error('Error adjusting balance in Firestore:', err);
+      }
+    }
   };
 
   const toggleBanUser = async (userId: string) => {
-    setAllUsers((prev) =>
-      prev.map((u) => {
+    let targetBanned: boolean = false;
+    setAllUsers((prev) => {
+      const updated = prev.map((u) => {
         if (u.id === userId) {
-          const newBannedState = !u.isBanned;
-          try {
-            updateDoc(doc(db, 'users', userId), { isBanned: newBannedState });
-          } catch {
-            // fallback
-          }
-          return { ...u, isBanned: newBannedState };
+          targetBanned = !u.isBanned;
+          return { ...u, isBanned: targetBanned };
         }
         return u;
-      })
-    );
+      });
+      localStorage.setItem(STORAGE_KEYS.ALL_USERS, JSON.stringify(updated));
+      broadcastSync({ allUsers: updated });
+      return updated;
+    });
+
+    if (currentUser?.id === userId) {
+      setCurrentUser((prev) => (prev ? { ...prev, isBanned: targetBanned } : null));
+    }
+
+    try {
+      await updateDoc(doc(db, 'users', userId), { isBanned: targetBanned });
+    } catch (err) {
+      console.error('Error toggling ban in Firestore:', err);
+    }
   };
 
   const updateSettings = async (newSettings: Partial<AppSettings>) => {
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
+    broadcastSync({ settings: updated });
     try {
-      await setDoc(doc(db, 'settings', 'general'), updated);
-    } catch {
-      // fallback
+      await setDoc(doc(db, 'settings', 'general'), updated, { merge: true });
+    } catch (err) {
+      console.error('Error updating settings in Firestore:', err);
     }
   };
 

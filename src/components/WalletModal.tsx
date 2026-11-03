@@ -12,7 +12,12 @@ import {
   History,
   CheckCircle2,
   XCircle,
-  Clock4
+  Clock4,
+  ShieldCheck,
+  Smartphone,
+  KeyRound,
+  HelpCircle,
+  Send
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { GatewayType } from '../types';
@@ -87,10 +92,9 @@ export const WalletModal: React.FC = () => {
 
   const getGatewayNumber = (gw: GatewayType) => {
     switch (gw) {
-      case 'bKash': return settings.bkashNumber;
-      case 'Nagad': return settings.nagadNumber;
-      case 'Rocket': return settings.rocketNumber;
-      case 'Upay': return settings.upayNumber;
+      case 'bKash': return settings.bkashNumber || '01878-901234';
+      case 'Nagad': return settings.nagadNumber || '01789-012345';
+      default: return settings.bkashNumber || '01878-901234';
     }
   };
 
@@ -138,11 +142,24 @@ export const WalletModal: React.FC = () => {
   const handleWithdrawSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!withdrawAmount || Number(withdrawAmount) <= 0) {
-      setWithdrawStatus({ success: false, message: 'Please enter a valid withdrawal amount.' });
+      setWithdrawStatus({ success: false, message: 'সঠিক টাকার পরিমাণ দিন।' });
+      return;
+    }
+    const minW = Math.max(50, settings.minWithdraw || 50);
+    const amt = Number(withdrawAmount);
+    if (amt < minW) {
+      setWithdrawStatus({ success: false, message: `সর্বনিম্ন উত্তোলনের পরিমাণ ৳${minW}।` });
+      return;
+    }
+    if (amt > currentUser.gameBalance) {
+      setWithdrawStatus({ 
+        success: false, 
+        message: `উত্তোলন শুধুমাত্র উইনিং ব্যালেন্স থেকে করা যাবে। আপনার বর্তমান উইনিং ব্যালেন্স ৳${currentUser.gameBalance.toFixed(2)}।` 
+      });
       return;
     }
     if (!withdrawNumber.trim()) {
-      setWithdrawStatus({ success: false, message: 'Please enter your receiving mobile number.' });
+      setWithdrawStatus({ success: false, message: 'টাকা পাওয়ার নম্বরটি দিন।' });
       return;
     }
 
@@ -151,7 +168,7 @@ export const WalletModal: React.FC = () => {
 
     const res = await submitWithdraw({
       gateway: selectedGateway,
-      amount: Number(withdrawAmount),
+      amount: amt,
       withdrawNumber: withdrawNumber.trim()
     });
 
@@ -160,6 +177,7 @@ export const WalletModal: React.FC = () => {
 
     if (res.success) {
       setWithdrawNumber('');
+      setWithdrawAmount('');
     }
   };
 
@@ -265,186 +283,343 @@ export const WalletModal: React.FC = () => {
           {/* TAB 1: DEPOSIT */}
           {activeTab === 'deposit' && (
             <div className="space-y-4">
-              {/* Gateway Selector */}
+              {/* Professional Gateway Selector (bKash & Nagad only) */}
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                  পেমেন্ট মেথড নির্বাচন করুন:
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(['bKash', 'Nagad', 'Rocket', 'Upay'] as GatewayType[]).map((gw) => (
-                    <button
-                      key={gw}
-                      type="button"
-                      onClick={() => setSelectedGateway(gw)}
-                      className={`py-2.5 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all ${
-                        selectedGateway === gw
-                          ? 'border-blue-600 bg-blue-50/60 text-blue-700 ring-2 ring-blue-500/20'
-                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                      }`}
-                    >
-                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-black ${
-                        gw === 'bKash' ? 'bg-[#DF146E]' : gw === 'Nagad' ? 'bg-[#F6921E]' : gw === 'Rocket' ? 'bg-[#8C3494]' : 'bg-[#0081C9]'
-                      }`}>
-                        {gw.charAt(0)}
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                    <span className="w-1.5 h-3.5 bg-blue-600 rounded-full" />
+                    <span>পেমেন্ট গেটওয়ে নির্বাচন করুন:</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-medium">ব্যক্তিগত সেন্ড মানি</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  {/* bKash Card */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedGateway('bKash')}
+                    className={`relative p-3 rounded-2xl border-2 text-left transition-all active:scale-[0.98] flex items-center gap-3 ${
+                      selectedGateway === 'bKash'
+                        ? 'border-[#DF146E] bg-gradient-to-br from-[#DF146E]/10 via-[#DF146E]/5 to-white shadow-md shadow-[#DF146E]/15 ring-2 ring-[#DF146E]/20'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-[#DF146E] text-white flex items-center justify-center font-black text-sm shrink-0 shadow-sm">
+                      <span className="tracking-tighter">bK</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-xs text-slate-900 block leading-tight">
+                          bKash
+                        </span>
+                        {selectedGateway === 'bKash' && (
+                          <span className="w-4 h-4 rounded-full bg-[#DF146E] text-white flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10.5px] font-bold text-[#DF146E] block mt-0.5">
+                        বিকাশ পার্সোনাল
                       </span>
-                      <span>{gw}</span>
-                    </button>
-                  ))}
+                      <span className="text-[9.5px] text-slate-400 block">
+                        সেন্ড মানি · ইনস্ট্যান্ট
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Nagad Card */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedGateway('Nagad')}
+                    className={`relative p-3 rounded-2xl border-2 text-left transition-all active:scale-[0.98] flex items-center gap-3 ${
+                      selectedGateway === 'Nagad'
+                        ? 'border-[#F6921E] bg-gradient-to-br from-[#F6921E]/10 via-[#F6921E]/5 to-white shadow-md shadow-[#F6921E]/15 ring-2 ring-[#F6921E]/20'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-[#F6921E] text-white flex items-center justify-center font-black text-sm shrink-0 shadow-sm">
+                      <span className="tracking-tighter">NG</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-xs text-slate-900 block leading-tight">
+                          Nagad
+                        </span>
+                        {selectedGateway === 'Nagad' && (
+                          <span className="w-4 h-4 rounded-full bg-[#F6921E] text-white flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10.5px] font-bold text-[#F6921E] block mt-0.5">
+                        নগদ পার্সোনাল
+                      </span>
+                      <span className="text-[9.5px] text-slate-400 block">
+                        সেন্ড মানি · ইনস্ট্যান্ট
+                      </span>
+                    </div>
+                  </button>
                 </div>
               </div>
 
-              {/* Branded Instruction Card with Copy Button */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2 text-xs">
+              {/* Step 1: Official Number & Copy Card */}
+              <div className={`rounded-2xl border p-3.5 space-y-3 transition-colors ${
+                selectedGateway === 'bKash' 
+                  ? 'bg-gradient-to-b from-[#DF146E]/5 to-slate-50/80 border-[#DF146E]/30' 
+                  : 'bg-gradient-to-b from-[#F6921E]/5 to-slate-50/80 border-[#F6921E]/30'
+              }`}>
                 <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-slate-800 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    <span>{selectedGateway} Personal (Send Money)</span>
-                  </span>
-                  <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full">
-                    সেন্ড মানি
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black text-white ${
+                      selectedGateway === 'bKash' ? 'bg-[#DF146E]' : 'bg-[#F6921E]'
+                    }`}>
+                      ১
+                    </span>
+                    <span className="font-black text-xs text-slate-800">
+                      টাকা পাঠানোর {selectedGateway === 'bKash' ? 'বিকাশ' : 'নগদ'} নম্বর:
+                    </span>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    selectedGateway === 'bKash' ? 'bg-[#DF146E]/15 text-[#DF146E]' : 'bg-[#F6921E]/15 text-[#F6921E]'
+                  }`}>
+                    Send Money
                   </span>
                 </div>
 
-                <div className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between">
+                {/* Big Copyable Number Box */}
+                <div className="p-3 bg-white rounded-xl border border-slate-200/90 shadow-xs flex items-center justify-between gap-2">
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-semibold">আমাদের নম্বর</span>
-                    <span className="font-mono text-sm font-bold text-slate-900 tracking-wider">
+                    <span className="text-[10px] text-slate-400 block font-semibold">
+                      {selectedGateway} Personal Number (ট্যাপ করে কপি করুন)
+                    </span>
+                    <span className="font-mono text-base sm:text-lg font-black text-slate-900 tracking-wider select-all block mt-0.5">
                       {getGatewayNumber(selectedGateway)}
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={handleCopyGatewayNumber}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm active:scale-95 transition-all shrink-0 ${
+                      copiedNumber 
+                        ? 'bg-emerald-600 text-white' 
+                        : selectedGateway === 'bKash'
+                        ? 'bg-[#DF146E] hover:bg-[#c91060] text-white shadow-[#DF146E]/20'
+                        : 'bg-[#F6921E] hover:bg-[#e07f12] text-white shadow-[#F6921E]/20'
+                    }`}
                   >
-                    {copiedNumber ? <Check className="w-3 h-3 text-emerald-300" /> : <Copy className="w-3 h-3" />}
-                    <span>{copiedNumber ? 'কপি হয়েছে' : 'কপি'}</span>
+                    {copiedNumber ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedNumber ? 'কপি হয়েছে' : 'কপি করুন'}</span>
                   </button>
                 </div>
 
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  * ওপরের নম্বরে সেন্ড মানি করুন। এরপর আপনার প্রেরক মোবাইল নম্বর ও ফিরতি মেসেজের ট্রানজেকশন আইডি (TrxID) নিচে লিখে সাবমিট করুন। সর্বনিম্ন ডিপোজিট ৳{settings.minDeposit}।
-                </p>
+                {/* 3 Step Instructions */}
+                <div className="bg-white/80 rounded-xl p-2.5 border border-slate-200/60 text-[11px] text-slate-600 space-y-1.5 leading-relaxed">
+                  <div className="flex items-start gap-1.5">
+                    <span className="font-bold text-slate-900 shrink-0">•</span>
+                    <span>আপনার <strong>{selectedGateway} App</strong> এ যান এবং <strong>"Send Money" (সেন্ড মানি)</strong> অপশন সিলেক্ট করুন।</span>
+                  </div>
+                  <div className="flex items-start gap-1.5">
+                    <span className="font-bold text-slate-900 shrink-0">•</span>
+                    <span>ওপরের নম্বরে সর্বনিম্ন <strong>৳{settings.minDeposit}</strong> টাকা পাঠান।</span>
+                  </div>
+                  <div className="flex items-start gap-1.5">
+                    <span className="font-bold text-slate-900 shrink-0">•</span>
+                    <span>টাকা পাঠানো শেষে ফিরতি এসএমএস থেকে <strong>Transaction ID (TrxID)</strong> কপি করে নিচে দিন।</span>
+                  </div>
+                </div>
               </div>
 
               {depositStatus && (
-                <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+                <div className={`p-3 rounded-xl text-xs flex items-center gap-2 animate-in fade-in ${
                   depositStatus.success 
                     ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
                     : 'bg-red-50 text-red-800 border border-red-200'
                 }`}>
                   {depositStatus.success ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />}
-                  <span>{depositStatus.message}</span>
+                  <span className="font-medium">{depositStatus.message}</span>
                 </div>
               )}
 
-              {/* Form Inputs */}
-              <form onSubmit={handleDepositSubmit} className="space-y-3">
+              {/* Step 2: Form Inputs */}
+              <form onSubmit={handleDepositSubmit} className="space-y-3.5 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200">
+                <div className="flex items-center gap-1.5 border-b border-slate-200 pb-2">
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black text-white ${
+                    selectedGateway === 'bKash' ? 'bg-[#DF146E]' : 'bg-[#F6921E]'
+                  }`}>
+                    ২
+                  </span>
+                  <span className="font-black text-xs text-slate-800">
+                    ডিপোজিট ভেরিফিকেশন তথ্য সাবমিট করুন:
+                  </span>
+                </div>
+
+                {/* Amount with quick select buttons */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    টাকার পরিমাণ (BDT) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min={settings.minDeposit}
-                    max={settings.maxDeposit}
-                    value={depositAmount}
-                    onChange={(e) => setDepositAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder={`Min: ৳${settings.minDeposit}`}
-                    className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    required
-                  />
-                  <div className="flex gap-1.5 mt-1.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      টাকার পরিমাণ (BDT) <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      সর্বনিম্ন ৳{settings.minDeposit} - সর্বোচ্চ ৳{settings.maxDeposit}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 font-bold text-slate-400 text-sm">৳</span>
+                    <input
+                      type="number"
+                      min={settings.minDeposit}
+                      max={settings.maxDeposit}
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder={`Min: ৳${settings.minDeposit}`}
+                      className="w-full pl-8 pr-3 py-2.5 text-xs font-extrabold rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  {/* Quick Select Buttons */}
+                  <div className="grid grid-cols-4 gap-1.5 mt-2">
                     {[50, 100, 200, 500].map((amt) => (
                       <button
                         key={amt}
                         type="button"
                         onClick={() => setDepositAmount(amt)}
-                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10.5px] font-bold"
+                        className={`py-1 rounded-lg text-[10.5px] font-bold border transition-colors ${
+                          depositAmount === amt
+                            ? selectedGateway === 'bKash' 
+                              ? 'bg-[#DF146E] text-white border-[#DF146E]'
+                              : 'bg-[#F6921E] text-white border-[#F6921E]'
+                            : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                        }`}
                       >
-                        +৳{amt}
+                        ৳{amt}
                       </button>
                     ))}
                   </div>
                 </div>
 
+                {/* Sender Mobile Number */}
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
                     যে নম্বর থেকে টাকা পাঠিয়েছেন (Sender Number) <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="tel"
-                    value={senderNumber}
-                    onChange={(e) => setSenderNumber(e.target.value)}
-                    placeholder="Ex: 01712345678"
-                    className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    required
-                  />
+                  <div className="relative">
+                    <Smartphone className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <input
+                      type="tel"
+                      value={senderNumber}
+                      onChange={(e) => setSenderNumber(e.target.value)}
+                      placeholder="01XXXXXXXXX"
+                      className="w-full pl-9 pr-3 py-2 text-xs font-bold rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                      required
+                    />
+                  </div>
                 </div>
 
+                {/* Transaction ID */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Transaction ID (TrxID) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={trxId}
-                    onChange={(e) => setTrxId(e.target.value)}
-                    placeholder="Ex: 9K8A7B6C5D"
-                    className="w-full px-3 py-2 text-xs font-mono font-bold uppercase rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    required
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      Transaction ID (TrxID) <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400">এসএমএস থেকে কোডটি দিন</span>
+                  </div>
+                  <div className="relative">
+                    <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      value={trxId}
+                      onChange={(e) => setTrxId(e.target.value.toUpperCase())}
+                      placeholder="Ex: 9K8A7B6C5D"
+                      className="w-full pl-9 pr-3 py-2 text-xs font-mono font-black uppercase rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none tracking-wider text-slate-900"
+                      required
+                    />
+                  </div>
                 </div>
 
+                {/* Submit Button styled to match active gateway */}
                 <button
                   type="submit"
                   disabled={isDepositSubmitting}
-                  className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-extrabold uppercase shadow-md shadow-blue-500/20 active:scale-[0.98] transition-all"
+                  className={`w-full py-3 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 ${
+                    isDepositSubmitting
+                      ? 'bg-slate-400 cursor-not-allowed'
+                      : selectedGateway === 'bKash'
+                      ? 'bg-gradient-to-r from-[#DF146E] to-[#B00F55] hover:from-[#c91060] hover:to-[#960d49] shadow-[#DF146E]/25'
+                      : 'bg-gradient-to-r from-[#F6921E] to-[#D97706] hover:from-[#e07f12] hover:to-[#b45309] shadow-[#F6921E]/25'
+                  }`}
                 >
-                  {isDepositSubmitting ? 'রিকোয়েস্ট পাঠানো হচ্ছে...' : 'ডিপোজিট রিকোয়েস্ট সাবমিট করুন'}
+                  <Send className="w-3.5 h-3.5" />
+                  <span>
+                    {isDepositSubmitting ? 'রিকোয়েস্ট যাচাই হচ্ছে...' : `${selectedGateway} ডিপোজিট সাবমিট করুন`}
+                  </span>
                 </button>
+
+                {/* Trust guarantee footer */}
+                <div className="flex items-center justify-center gap-1.5 text-[10.5px] text-slate-500 pt-1 text-center font-medium">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>৫-১৫ মিনিটের মধ্যে আপনার ডিপোজিট ব্যালেন্সে টাকা যোগ হবে।</span>
+                </div>
               </form>
             </div>
           )}
 
-          {/* TAB 2: WITHDRAW */}
+          {/* TAB 2: WITHDRAW (bKash & Nagad only) */}
           {activeTab === 'withdraw' && (
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1.5">
                   উত্তোলনের মেথড নির্বাচন করুন:
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['bKash', 'Nagad', 'Rocket'] as GatewayType[]).map((gw) => (
+                <div className="grid grid-cols-2 gap-2.5">
+                  {(['bKash', 'Nagad'] as GatewayType[]).map((gw) => (
                     <button
                       key={gw}
                       type="button"
                       onClick={() => setSelectedGateway(gw)}
-                      className={`py-2.5 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all ${
+                      className={`p-3 rounded-2xl border-2 text-xs font-bold flex items-center gap-2.5 transition-all ${
                         selectedGateway === gw
-                          ? 'border-emerald-600 bg-emerald-50/60 text-emerald-800 ring-2 ring-emerald-500/20'
+                          ? gw === 'bKash'
+                            ? 'border-[#DF146E] bg-[#DF146E]/10 text-slate-900 ring-2 ring-[#DF146E]/20'
+                            : 'border-[#F6921E] bg-[#F6921E]/10 text-slate-900 ring-2 ring-[#F6921E]/20'
                           : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                       }`}
                     >
-                      <span>{gw}</span>
+                      <div className={`w-8 h-8 rounded-xl text-white flex items-center justify-center font-black text-xs shrink-0 ${
+                        gw === 'bKash' ? 'bg-[#DF146E]' : 'bg-[#F6921E]'
+                      }`}>
+                        {gw === 'bKash' ? 'bK' : 'NG'}
+                      </div>
+                      <div className="text-left flex-1 min-w-0">
+                        <span className="block font-black text-xs">{gw}</span>
+                        <span className="text-[10px] text-slate-500 font-medium">পার্সোনাল ক্যাশআউট</span>
+                      </div>
                     </button>
                   ))}
                 </div>
               </div>
 
+              {/* Winning Balance Status Card */}
+              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3.5 space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-700">উত্তোলনযোগ্য উইনিং ব্যালেন্স:</span>
+                  <span className="text-base font-black text-emerald-600 tabular-nums">৳{currentUser.gameBalance.toFixed(2)}</span>
+                </div>
+                <p className="text-[10.5px] text-slate-500 leading-snug">
+                  * শুধুমাত্র টুর্নামেন্ট/ম্যাচ জিতে অর্জিত টাকা উইথড্র করা যাবে (সর্বনিম্ন ৳৫০)। ডিপোজিটকৃত মেইন ব্যালেন্স (৳{currentUser.mainBalance.toFixed(1)}) দিয়ে ম্যাচ জয়েন ও ডায়মন্ড কিনতে পারবেন।
+                </p>
+              </div>
+
               {/* Limits Information Box */}
-              <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900 space-y-1">
+              <div className="bg-slate-100 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 space-y-1">
                 <div className="flex justify-between font-bold">
                   <span>সর্বনিম্ন উত্তোলন:</span>
-                  <span>৳{settings.minWithdraw}</span>
+                  <span className="text-emerald-700">৳{Math.max(50, settings.minWithdraw || 50)}</span>
                 </div>
                 <div className="flex justify-between font-bold">
                   <span>দৈনিক সর্বোচ্চ সীমা:</span>
                   <span>৳{settings.maxWithdrawPerDay} / দিন</span>
                 </div>
-                <p className="text-[10.5px] text-emerald-700 pt-1">
-                  * উইথড্র রিকোয়েস্ট করার সাথে সাথে আপনার ব্যালেন্স থেকে টাকা হোল্ড হবে এবং এডমিন যাচাই করে ১০-৩০ মিনিটের মধ্যে টাকা পাঠিয়ে দেবেন।
-                </p>
               </div>
 
               {withdrawStatus && (
@@ -465,11 +640,11 @@ export const WalletModal: React.FC = () => {
                   </label>
                   <input
                     type="number"
-                    min={settings.minWithdraw}
-                    max={Math.min(totalBalance, settings.maxWithdrawPerDay)}
+                    min={Math.max(50, settings.minWithdraw || 50)}
+                    max={Math.min(currentUser.gameBalance, settings.maxWithdrawPerDay)}
                     value={withdrawAmount}
                     onChange={(e) => setWithdrawAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder={`Min: ৳${settings.minWithdraw}`}
+                    placeholder={`Min: ৳${Math.max(50, settings.minWithdraw || 50)}`}
                     className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                     required
                   />
@@ -478,18 +653,20 @@ export const WalletModal: React.FC = () => {
                       <button
                         key={amt}
                         type="button"
+                        disabled={currentUser.gameBalance < amt}
                         onClick={() => setWithdrawAmount(amt)}
-                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10.5px] font-bold"
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-[10.5px] font-bold"
                       >
                         ৳{amt}
                       </button>
                     ))}
                     <button
                       type="button"
-                      onClick={() => setWithdrawAmount(Math.floor(totalBalance))}
-                      className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-[10.5px] font-bold ml-auto"
+                      disabled={currentUser.gameBalance < Math.max(50, settings.minWithdraw || 50)}
+                      onClick={() => setWithdrawAmount(Math.floor(currentUser.gameBalance))}
+                      className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-[10.5px] font-bold ml-auto"
                     >
-                      সব ব্যালেন্স
+                      সব উইনিং ব্যালেন্স
                     </button>
                   </div>
                 </div>

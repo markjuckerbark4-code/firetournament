@@ -1,6 +1,10 @@
 import React from 'react';
-import { Flame, Trophy, Swords, Zap, Gift, Dices } from 'lucide-react';
+import { Flame, Trophy, Swords, Zap, Gift } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import ffAlokImg from '../assets/images/ff_alok_solo_1793678913693.jpg';
+import ffHayatoImg from '../assets/images/ff_hayato_duo_1793678915489.jpg';
+import ffChronoImg from '../assets/images/ff_chrono_squad_1793678915035.jpg';
+import ffKellyImg from '../assets/images/ff_kelly_clash_1793678916143.jpg';
 
 export const CategoryGrid: React.FC = () => {
   const { matches, setSelectedCategory } = useApp();
@@ -16,7 +20,8 @@ export const CategoryGrid: React.FC = () => {
       subtitle: 'BERMUDA & PURGATORY',
       badge: 'HOT',
       badgeColor: 'bg-red-500 text-white',
-      image: '/src/assets/images/ff_alok_solo_1793678913693.jpg',
+      image: ffAlokImg,
+      fallbackImage: '/assets/images/ff_alok_solo_1793678913693.jpg',
       icon: Flame,
       heroName: 'DJ ALOK',
       count: getMatchCount('solo'),
@@ -27,7 +32,8 @@ export const CategoryGrid: React.FC = () => {
       subtitle: '2 PLAYERS TEAM',
       badge: 'PRO',
       badgeColor: 'bg-blue-600 text-white',
-      image: '/src/assets/images/ff_hayato_duo_1793678915489.jpg',
+      image: ffHayatoImg,
+      fallbackImage: '/assets/images/ff_hayato_duo_1793678915489.jpg',
       icon: Swords,
       heroName: 'HAYATO',
       count: getMatchCount('duo'),
@@ -38,7 +44,8 @@ export const CategoryGrid: React.FC = () => {
       subtitle: '4 PLAYERS CLAN WAR',
       badge: 'HOT',
       badgeColor: 'bg-amber-500 text-white',
-      image: '/src/assets/images/ff_chrono_squad_1793678915035.jpg',
+      image: ffChronoImg,
+      fallbackImage: '/assets/images/ff_chrono_squad_1793678915035.jpg',
       icon: Trophy,
       heroName: 'CHRONO',
       count: getMatchCount('squad'),
@@ -49,7 +56,8 @@ export const CategoryGrid: React.FC = () => {
       subtitle: 'ROUND 7 BOOYAH',
       badge: 'POPULAR',
       badgeColor: 'bg-emerald-600 text-white',
-      image: '/src/assets/images/ff_kelly_clash_1793678916143.jpg',
+      image: ffKellyImg,
+      fallbackImage: '/assets/images/ff_kelly_clash_1793678916143.jpg',
       icon: Zap,
       heroName: 'KELLY',
       count: getMatchCount('cs4v4'),
@@ -63,7 +71,8 @@ export const CategoryGrid: React.FC = () => {
       subtitle: 'HEAD TO HEAD DUEL',
       badge: 'PRO',
       badgeColor: 'bg-purple-600 text-white',
-      image: '/src/assets/images/ff_hayato_duo_1793678915489.jpg',
+      image: ffHayatoImg,
+      fallbackImage: '/assets/images/ff_hayato_duo_1793678915489.jpg',
       icon: Swords,
       heroName: 'IRON CAGE',
       count: getMatchCount('lonewolf'),
@@ -74,7 +83,8 @@ export const CategoryGrid: React.FC = () => {
       subtitle: 'ZERO ENTRY · WIN CASH',
       badge: 'GIVEAWAY',
       badgeColor: 'bg-emerald-500 text-white',
-      image: '/src/assets/images/ff_alok_solo_1793678913693.jpg',
+      image: ffAlokImg,
+      fallbackImage: '/assets/images/ff_alok_solo_1793678913693.jpg',
       icon: Gift,
       heroName: 'FREE ENTRY',
       count: getMatchCount('ludo_free'),
@@ -112,6 +122,12 @@ export const CategoryGrid: React.FC = () => {
                     src={cat.image}
                     alt={cat.title}
                     referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.src.includes('public') && cat.fallbackImage) {
+                        target.src = cat.fallbackImage;
+                      }
+                    }}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent" />
@@ -187,6 +203,12 @@ export const CategoryGrid: React.FC = () => {
                     src={cat.image}
                     alt={cat.title}
                     referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.src.includes('public') && cat.fallbackImage) {
+                        target.src = cat.fallbackImage;
+                      }
+                    }}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent" />

@@ -29,24 +29,18 @@ export const TopBanner: React.FC = () => {
               কিভাবে? টাকা ADD করবেন?
             </h3>
             <p className="text-[11px] text-blue-100 font-medium">
-              বিকাশ, নগদ, রকেটে টাকা পাঠাতে এখানে ট্যাপ করুন
+              বিকাশ ও নগদে টাকা পাঠাতে এখানে ট্যাপ করুন
             </p>
           </div>
 
           <div className="flex flex-col items-end gap-1.5 shrink-0">
-            {/* Gateway Badges */}
-            <div className="flex items-center -space-x-1 bg-black/25 backdrop-blur-xs p-1 rounded-full border border-white/20">
-              <span className="w-5 h-5 rounded-full bg-[#DF146E] flex items-center justify-center font-bold text-[9px] text-white shadow-xs" title="bKash">
-                b
+            {/* Gateway Badges: bKash and Nagad */}
+            <div className="flex items-center gap-1 bg-black/30 backdrop-blur-xs px-2 py-1 rounded-full border border-white/20">
+              <span className="px-1.5 py-0.5 rounded-full bg-[#DF146E] flex items-center justify-center font-black text-[9px] text-white shadow-xs" title="bKash">
+                bKash
               </span>
-              <span className="w-5 h-5 rounded-full bg-[#F6921E] flex items-center justify-center font-bold text-[9px] text-white shadow-xs" title="Nagad">
-                N
-              </span>
-              <span className="w-5 h-5 rounded-full bg-[#8C3494] flex items-center justify-center font-bold text-[9px] text-white shadow-xs" title="Rocket">
-                R
-              </span>
-              <span className="w-5 h-5 rounded-full bg-[#0081C9] flex items-center justify-center font-bold text-[9px] text-white shadow-xs" title="Upay">
-                U
+              <span className="px-1.5 py-0.5 rounded-full bg-[#F6921E] flex items-center justify-center font-black text-[9px] text-white shadow-xs" title="Nagad">
+                Nagad
               </span>
             </div>
 

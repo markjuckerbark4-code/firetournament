@@ -73,7 +73,7 @@ export const AdminPanel: React.FC = () => {
   const [matchTotalSlots, setMatchTotalSlots] = useState<number>(8);
   const [matchScheduleTime, setMatchScheduleTime] = useState('Today at 03:40 PM');
   const [matchRules, setMatchRules] = useState('1. No emulators allowed.\n2. Level 35+ ID required.\n3. Teaming up will result in a permanent ban.');
-  const [matchBanner, setMatchBanner] = useState('/src/assets/images/ff_alok_solo_1793678913693.jpg');
+  const [matchBanner, setMatchBanner] = useState('/assets/images/ff_alok_solo_1793678913693.jpg');
 
   // Room Credentials Release modal
   const [roomModalMatchId, setRoomModalMatchId] = useState<string | null>(null);
@@ -104,6 +104,10 @@ export const AdminPanel: React.FC = () => {
   // Settings State Form
   const [settingsForm, setSettingsForm] = useState(settings);
   const [settingsSavedMessage, setSettingsSavedMessage] = useState(false);
+
+  React.useEffect(() => {
+    setSettingsForm(settings);
+  }, [settings]);
 
   // Transactions Filter
   const [txFilter, setTxFilter] = useState<'all' | 'pending' | 'deposit' | 'withdraw'>('pending');
@@ -1145,39 +1149,23 @@ export const AdminPanel: React.FC = () => {
                 </span>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] text-slate-400 block mb-0.5">বিকাশ নম্বর</label>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">বিকাশ পার্সোনাল নম্বর (bKash)</label>
                     <input
                       type="text"
                       value={settingsForm.bkashNumber}
                       onChange={(e) => setSettingsForm({ ...settingsForm, bkashNumber: e.target.value })}
-                      className="w-full px-2.5 py-1.5 bg-[#091122] rounded-lg border border-slate-700 text-white font-mono"
+                      className="w-full px-2.5 py-2 bg-[#091122] rounded-lg border border-slate-700 text-white font-mono text-xs"
+                      placeholder="01878-901234"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-400 block mb-0.5">নগদ নম্বর</label>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">নগদ পার্সোনাল নম্বর (Nagad)</label>
                     <input
                       type="text"
                       value={settingsForm.nagadNumber}
                       onChange={(e) => setSettingsForm({ ...settingsForm, nagadNumber: e.target.value })}
-                      className="w-full px-2.5 py-1.5 bg-[#091122] rounded-lg border border-slate-700 text-white font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-400 block mb-0.5">রকেট নম্বর</label>
-                    <input
-                      type="text"
-                      value={settingsForm.rocketNumber}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, rocketNumber: e.target.value })}
-                      className="w-full px-2.5 py-1.5 bg-[#091122] rounded-lg border border-slate-700 text-white font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-400 block mb-0.5">উপায় নম্বর</label>
-                    <input
-                      type="text"
-                      value={settingsForm.upayNumber}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, upayNumber: e.target.value })}
-                      className="w-full px-2.5 py-1.5 bg-[#091122] rounded-lg border border-slate-700 text-white font-mono"
+                      className="w-full px-2.5 py-2 bg-[#091122] rounded-lg border border-slate-700 text-white font-mono text-xs"
+                      placeholder="01789-012345"
                     />
                   </div>
                 </div>
