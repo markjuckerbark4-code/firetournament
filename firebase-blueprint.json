@@ -1,0 +1,141 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with dual-balance financial tracking and gaming stats",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 20 },
+        "ffUid": { "type": "string", "maxLength": 50 },
+        "ffIgn": { "type": "string", "maxLength": 50 },
+        "mainBalance": { "type": "number" },
+        "gameBalance": { "type": "number" },
+        "referralCode": { "type": "string", "maxLength": 50 },
+        "referredBy": { "type": "string", "maxLength": 50 },
+        "matchesJoined": { "type": "number" },
+        "totalWon": { "type": "number" },
+        "isBanned": { "type": "boolean" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "email", "displayName", "mainBalance", "gameBalance", "role"]
+    },
+    "TournamentMatch": {
+      "title": "TournamentMatch",
+      "description": "Free Fire tournament match lobby details and participants",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "enum": ["solo", "duo", "squad", "cs4v4", "lonewolf", "ludo_free"] },
+        "categorySection": { "type": "string", "enum": ["free_fire", "ludo_and_free"] },
+        "map": { "type": "string", "maxLength": 50 },
+        "type": { "type": "string", "maxLength": 20 },
+        "version": { "type": "string", "maxLength": 20 },
+        "entryFee": { "type": "number" },
+        "perKill": { "type": "number" },
+        "winPrize": { "type": "number" },
+        "totalPrize": { "type": "number" },
+        "totalSlots": { "type": "number" },
+        "bookedSlots": { "type": "number" },
+        "scheduleTime": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["upcoming", "ongoing", "completed", "cancelled"] },
+        "roomId": { "type": "string", "maxLength": 50 },
+        "roomPassword": { "type": "string", "maxLength": 50 },
+        "rules": { "type": "string", "maxLength": 2000 },
+        "bannerImage": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "category", "entryFee", "winPrize", "totalSlots", "status"]
+    },
+    "MatchResult": {
+      "title": "MatchResult",
+      "description": "Declared tournament result with winner details and scoreboard",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "matchId": { "type": "string", "maxLength": 128 },
+        "matchTitle": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 50 },
+        "map": { "type": "string", "maxLength": 50 },
+        "winPrize": { "type": "number" },
+        "perKill": { "type": "number" },
+        "entryFee": { "type": "number" },
+        "winnerName": { "type": "string", "maxLength": 100 },
+        "winnerIgn": { "type": "string", "maxLength": 50 },
+        "winnerFfUid": { "type": "string", "maxLength": 50 },
+        "winnerPrize": { "type": "number" },
+        "totalKills": { "type": "number" },
+        "publishedAt": { "type": "string" }
+      },
+      "required": ["id", "matchId", "matchTitle", "winnerName", "winnerPrize"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Deposit and withdrawal financial transactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userEmail": { "type": "string", "maxLength": 256 },
+        "userName": { "type": "string", "maxLength": 100 },
+        "userPhone": { "type": "string", "maxLength": 30 },
+        "type": { "type": "string", "enum": ["deposit", "withdraw"] },
+        "gateway": { "type": "string", "enum": ["bKash", "Nagad", "Rocket", "Upay"] },
+        "amount": { "type": "number" },
+        "senderNumber": { "type": "string", "maxLength": 30 },
+        "trxId": { "type": "string", "maxLength": 100 },
+        "withdrawNumber": { "type": "string", "maxLength": 30 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "rejectReason": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "type", "gateway", "amount", "status"]
+    },
+    "AppSetting": {
+      "title": "AppSetting",
+      "description": "Global esports platform settings and payment numbers",
+      "type": "object",
+      "properties": {
+        "siteName": { "type": "string", "maxLength": 100 },
+        "logoText": { "type": "string", "maxLength": 100 },
+        "marqueeNotice": { "type": "string", "maxLength": 1000 },
+        "bkashNumber": { "type": "string", "maxLength": 30 },
+        "nagadNumber": { "type": "string", "maxLength": 30 },
+        "rocketNumber": { "type": "string", "maxLength": 30 },
+        "upayNumber": { "type": "string", "maxLength": 30 },
+        "minDeposit": { "type": "number" },
+        "maxDeposit": { "type": "number" },
+        "minWithdraw": { "type": "number" },
+        "maxWithdrawPerDay": { "type": "number" },
+        "supportWhatsapp": { "type": "string", "maxLength": 50 },
+        "supportTelegram": { "type": "string", "maxLength": 100 }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile with dual wallets"
+    },
+    "/matches/{matchId}": {
+      "schema": { "$ref": "#/entities/TournamentMatch" },
+      "description": "Free Fire tournament matches"
+    },
+    "/results/{resultId}": {
+      "schema": { "$ref": "#/entities/MatchResult" },
+      "description": "Completed match results and leaderboards"
+    },
+    "/transactions/{txId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "Financial deposit and withdrawal records"
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/AppSetting" },
+      "description": "Platform settings and payment gateway numbers"
+    }
+  }
+}

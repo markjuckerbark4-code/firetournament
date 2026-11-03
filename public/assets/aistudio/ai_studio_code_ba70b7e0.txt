@@ -1,0 +1,55 @@
+Create a complete, production-ready, mobile-first Free Fire Tournament & Esports Web Application named "LG LEADER BD" with full real-time Firestore database persistence, a modern clean white/light UI (#f8fafc) matching esports mobile apps, a dual-account wallet system, and a comprehensive Admin Panel accessible via the "/admin" route.
+
+### 1. UI & Design Constitution (Mobile-First Ergonomic Layout):
+- **Container**: Max-width mobile container (max-w-md mx-auto) centered on desktop, with clean light background (`bg-[#f8fafc]`), subtle borders (`border-slate-200`), and smooth box shadows.
+- **Header**: Simulated Android status bar (time, 4G, signal, battery 98%) + App Bar with animated glowing logo "LG LEADER BD (FREE FIRE ESPORTS)" and dynamic balance chip displaying Main & Game balance with a quick "+" deposit button. Underneath, an animated scrolling marquee notice ticker.
+- **Top Add Money Banner**: Vibrant top banner titled "কিভাবে? টাকা ADD করবেন?" with bKash, Nagad, Rocket, Upay logo badges; clicking it immediately triggers the Deposit modal.
+- **Category Grid**: 2-column game mode cards with rich Free Fire character hero banners (Alok, Hayato, Chrono, Kelly), "HOT/PRO" badges, uppercase mode titles, and match counters. Split into two sections: "FREE FIRE" and "LUDO AND FREE MATCH".
+- **Match Screen**: Sticky header `< {Category} Matches` with reload button, match cards with thumbnail, 3-column stats table (WIN PRIZE, ENTRY FEE, PER KILL, MAP, TYPE, VERSION), slot booking progress bar with Join button, expandable rules accordion, room ID/password release box, and full-width green status bar (`bg-[#2e7d32]`) showing "Starts at {time}".
+- **Results Screen**: Filter pills (All Results, Free Fire, CS 4v4, Lone Wolf, Free Match), match cards with "Winner & Result" header, Booyah champion trophy badge, and player scoreboard table.
+- **Profile Screen**: Cyan/Sky-blue gradient hero card (`from-[#38b6ff] via-[#1d8cf8] to-[#1264c5]`) with circular avatar, username, Free Fire UID, 3 stats columns (Matches Joined, BDT Balance, Total Won), white menu buttons (My Wallet, Withdraw, Refer and Earn with copyable code, My Profile, App Rules, Developer Profile, Edit Profile), and rounded blue Logout button.
+- **Bottom Navigation**: Pure white fixed bottom bar (`bg-white border-t border-slate-200 shadow-lg`) with 5 tabs: Shop, Play, My Matches, Results, Profile. Active tab has a soft lilac pill indicator (`bg-purple-100 text-purple-600`).
+- **Floating Mascot**: Circular customer support floating button at the bottom-right for instant WhatsApp/Telegram support.
+
+### 2. Dual Wallet & Financial System:
+- **Two Accounts**:
+  1. Main Account (ডিপোজিট ব্যালেন্স): Increases when a user deposits money via bKash/Nagad/Rocket and admin approves it.
+  2. Game Account (উইনিং ব্যালেন্স): Increases when a user wins tournaments or gets kill prizes.
+  - Total Unified Balance = Main Account + Game Account (displayed to user and usable for joining tournaments or withdrawal).
+- **Deposit Flow**:
+  - Payment Gateways: bKash, Nagad, Rocket (Personal Send Money numbers).
+  - Branded instruction card with COPY button, dynamic minimum deposit (default 50 BDT, customizable via Website Settings).
+  - Inputs for sender mobile number, amount, and Transaction ID (TrxID).
+  - Submits a pending transaction to Firestore that immediately shows in the Admin Panel for review.
+- **Withdrawal Flow**:
+  - Top "Available Balance" card showing total and account breakdown.
+  - Gateway selector, mobile number input, amount input.
+  - Dynamic limits: Minimum 50 BDT, Maximum 1000 BDT per day (enforced per user per day).
+  - Immediate deduction: When user submits a withdrawal request, the amount is deducted from their balance immediately and sent to Admin Panel as 'pending'. If admin rejects, amount is refunded.
+
+### 3. User Authentication & Profile:
+- **Welcome Back Login**: Clean white modal card, email and password inputs, black pill "Sign In" button, password reset.
+- **Let's Start Sign Up**: Clean white card, Full Name, Email, Mobile/UID, Password, Confirm Password, Terms checkbox, black pill "Create Account" button.
+- Default demo credentials for testing (`demo@lgleader.com` / `demo123` with 200 BDT balance).
+- Refer and Earn: Generates unique user referral codes with copy button and WhatsApp share link.
+
+### 4. Admin Panel (/admin route):
+- Accessible directly via `/admin` URL or hidden gesture with pin/password authorization.
+- **Dashboard**: Total registered users, total deposits, total withdrawals, live active matches, revenue metrics.
+- **Match Manager**: Create, edit, cancel, and delete matches. Set map, entry fee, per kill, total prize, slots, schedule, and rules. Option to publish Room ID and Password when the match is live.
+- **Result & Winner Declaration**: Select match, declare Booyah champion and kills, input individual player rankings and kill scores. Clicking "Publish Results" automatically distributes winning cash to players' Game Accounts and updates the Results tab.
+- **Transaction Manager**:
+  - Deposit Requests tab: Review TrxID, sender number, amount. Approve (adds money to user's Main Account) or Reject with notes.
+  - Withdraw Requests tab: Review player number and amount. Approve (marks paid) or Reject (refunds balance back to user).
+- **User Management**:
+  - Search and filter all registered users.
+  - Balance Adjust Modal: 3 distinct actions — Add Balance (+), Remove Balance (-), or Edit/Set exact balance for both Deposit Balance and Winning Balance separately.
+  - Ban / Unban user controls.
+- **Website Settings**:
+  - Edit Site Name, Logo Text, Marquee Notice announcement.
+  - Edit bKash, Nagad, Rocket personal numbers and instructions.
+  - Edit Minimum Deposit, Maximum Deposit, Minimum Withdraw, and Maximum Withdraw per Day limits.
+
+### 5. Tech Stack & Real-Time Sync:
+- React 19 + TypeScript + Vite + Tailwind CSS.
+- Firebase Firestore & Auth integration with real-time snapshot listeners (`onSnapshot`) so any match addition, balance change, or transaction update in Admin Panel reflects instantly across all users' devices without page refresh.

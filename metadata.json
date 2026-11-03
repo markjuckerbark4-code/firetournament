@@ -1,0 +1,6 @@
+{
+  "name": "LG LEADER BD - Free Fire Esports & Tournaments",
+  "description": "Mobile-first Free Fire Tournament & Esports web platform with dual wallet, real-time match lobbies, automated results, and admin management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
