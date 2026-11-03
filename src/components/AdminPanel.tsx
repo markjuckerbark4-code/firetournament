@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { 
   Shield, 
   Users, 
-  Swords, 
   CreditCard, 
   Settings as SettingsIcon, 
   Trophy, 
@@ -11,21 +10,20 @@ import {
   Edit2, 
   Check, 
   X, 
-  ArrowLeft, 
   Lock, 
+  Key,
   Search, 
-  DollarSign, 
-  AlertTriangle,
-  Send,
   Eye,
   CheckCircle2,
-  XCircle,
-  TrendingUp,
   Sliders,
-  Award
+  ExternalLink,
+  LogOut,
+  Ban,
+  Slash,
+  AlertCircle
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { TournamentMatch, GatewayType, ScoreboardEntry, MatchCategory } from '../types';
+import { TournamentMatch, ScoreboardEntry, MatchCategory } from '../types';
 
 export const AdminPanel: React.FC = () => {
   const { 
@@ -50,22 +48,28 @@ export const AdminPanel: React.FC = () => {
     quickDemoLogin
   } = useApp();
 
-  const [activeAdminTab, setActiveAdminTab] = useState<'dashboard' | 'matches' | 'results' | 'transactions' | 'users' | 'settings'>('dashboard');
+  // Navigation tab based on 6-grid tiles
+  type AdminTab = 'tournaments' | 'players' | 'payments' | 'room' | 'results' | 'settings';
+  const [activeTile, setActiveTile] = useState<AdminTab>('tournaments');
+
+  // Tournament list search & filter
+  const [tournamentSearch, setTournamentSearch] = useState('');
+  const [tournamentFilter, setTournamentFilter] = useState<'all' | 'upcoming' | 'ongoing' | 'completed'>('all');
 
   // Match Create/Edit Form
   const [isMatchFormOpen, setIsMatchFormOpen] = useState(false);
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
   const [matchTitle, setMatchTitle] = useState('');
-  const [matchCategory, setMatchCategory] = useState<MatchCategory>('solo');
+  const [matchCategory, setMatchCategory] = useState<MatchCategory>('cs4v4');
   const [matchMap, setMatchMap] = useState('Bermuda');
-  const [matchType, setMatchType] = useState<'SOLO' | 'DUO' | 'SQUAD' | '4v4'>('SOLO');
+  const [matchType, setMatchType] = useState<'SOLO' | 'DUO' | 'SQUAD' | '4v4'>('4v4');
   const [matchVersion, setMatchVersion] = useState<'TPP' | 'FPP'>('TPP');
   const [matchEntryFee, setMatchEntryFee] = useState<number>(30);
   const [matchPerKill, setMatchPerKill] = useState<number>(10);
-  const [matchWinPrize, setMatchWinPrize] = useState<number>(450);
-  const [matchTotalPrize, setMatchTotalPrize] = useState<number>(950);
-  const [matchTotalSlots, setMatchTotalSlots] = useState<number>(48);
-  const [matchScheduleTime, setMatchScheduleTime] = useState('Today at 08:30 PM');
+  const [matchWinPrize, setMatchWinPrize] = useState<number>(100);
+  const [matchTotalPrize, setMatchTotalPrize] = useState<number>(100);
+  const [matchTotalSlots, setMatchTotalSlots] = useState<number>(8);
+  const [matchScheduleTime, setMatchScheduleTime] = useState('Today at 03:40 PM');
   const [matchRules, setMatchRules] = useState('1. No emulators allowed.\n2. Level 35+ ID required.\n3. Teaming up will result in a permanent ban.');
   const [matchBanner, setMatchBanner] = useState('/src/assets/images/ff_alok_solo_1793678913693.jpg');
 
@@ -101,30 +105,53 @@ export const AdminPanel: React.FC = () => {
   // Transactions Filter
   const [txFilter, setTxFilter] = useState<'all' | 'pending' | 'deposit' | 'withdraw'>('pending');
 
-  // Metrics
-  const totalUsersCount = allUsers.length;
-  const totalApprovedDeposits = transactions
-    .filter((t) => t.type === 'deposit' && t.status === 'approved')
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalApprovedWithdrawals = transactions
-    .filter((t) => t.type === 'withdraw' && t.status === 'approved')
-    .reduce((sum, t) => sum + t.amount, 0);
-  const liveActiveMatchesCount = matches.filter((m) => m.status === 'upcoming' || m.status === 'ongoing').length;
-  const pendingTransactionsCount = transactions.filter((t) => t.status === 'pending').length;
+  // Password Authentication State
+  const [adminPasswordInput, setAdminPasswordInput] = useState('');
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [adminAuthError, setAdminAuthError] = useState('');
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('admin_session_auth') === 'true') {
+      return true;
+    }
+    return currentUser?.role === 'admin' && currentUser?.email === 'markjuckerbark4@gmail.com';
+  });
+
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (adminPasswordInput.trim() === 'ESA006##@@') {
+      sessionStorage.setItem('admin_session_auth', 'true');
+      quickDemoLogin('admin');
+      setIsAdminAuthenticated(true);
+      setAdminAuthError('');
+    } else {
+      setAdminAuthError('ভুল পাসওয়ার্ড! সঠিক এডমিন পাসওয়ার্ড লিখুন।');
+    }
+  };
+
+  const handleLogoutAdmin = () => {
+    sessionStorage.removeItem('admin_session_auth');
+    setIsAdminAuthenticated(false);
+    setAdminPasswordInput('');
+  };
+
+  const handleExitAdmin = () => {
+    setIsAdminRoute(false);
+    window.history.pushState({}, '', '/');
+  };
 
   const handleOpenCreateMatch = () => {
     setEditingMatchId(null);
-    setMatchTitle(`MATCH #${matches.length + 101} - BERMUDA SOLO GRAND RUSH`);
-    setMatchCategory('solo');
+    setMatchTitle(`CS 4V4`);
+    setMatchCategory('cs4v4');
     setMatchMap('Bermuda');
-    setMatchType('SOLO');
+    setMatchType('4v4');
     setMatchVersion('TPP');
     setMatchEntryFee(30);
     setMatchPerKill(10);
-    setMatchWinPrize(450);
-    setMatchTotalPrize(950);
-    setMatchTotalSlots(48);
-    setMatchScheduleTime('Today at 09:00 PM');
+    setMatchWinPrize(100);
+    setMatchTotalPrize(100);
+    setMatchTotalSlots(8);
+    setMatchScheduleTime('Today at 03:40 PM');
     setIsMatchFormOpen(true);
   };
 
@@ -186,6 +213,12 @@ export const AdminPanel: React.FC = () => {
     setIsMatchFormOpen(false);
   };
 
+  const handleCancelMatch = async (matchId: string) => {
+    if (window.confirm('আপনি কি নিশ্চিত যে এই টুর্নামেন্টটি বাতিল (Cancel) করতে চান?')) {
+      await updateMatch(matchId, { status: 'cancelled' });
+    }
+  };
+
   const handlePublishRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (roomModalMatchId && roomIdInput) {
@@ -226,6 +259,25 @@ export const AdminPanel: React.FC = () => {
     setTimeout(() => setSettingsSavedMessage(false), 3000);
   };
 
+  // Filtered Tournaments
+  const filteredMatches = matches.filter((m) => {
+    const q = tournamentSearch.toLowerCase().trim();
+    const matchesQuery = 
+      !q || 
+      m.title.toLowerCase().includes(q) || 
+      m.category.toLowerCase().includes(q) || 
+      m.map.toLowerCase().includes(q) ||
+      m.id.toLowerCase().includes(q);
+
+    if (!matchesQuery) return false;
+    if (tournamentFilter === 'upcoming') return m.status === 'upcoming';
+    if (tournamentFilter === 'ongoing') return m.status === 'ongoing';
+    if (tournamentFilter === 'completed') return m.status === 'completed';
+    return true;
+  });
+
+  const pendingTransactionsCount = transactions.filter((t) => t.status === 'pending').length;
+
   const filteredTransactions = transactions.filter((t) => {
     if (txFilter === 'pending') return t.status === 'pending';
     if (txFilter === 'deposit') return t.type === 'deposit';
@@ -234,8 +286,9 @@ export const AdminPanel: React.FC = () => {
   });
 
   const filteredUsers = allUsers.filter((u) => {
-    const q = userSearchQuery.toLowerCase();
+    const q = userSearchQuery.toLowerCase().trim();
     return (
+      !q ||
       u.displayName.toLowerCase().includes(q) ||
       u.email.toLowerCase().includes(q) ||
       u.phone.includes(q) ||
@@ -244,39 +297,16 @@ export const AdminPanel: React.FC = () => {
     );
   });
 
-  const handleExitAdmin = () => {
-    setIsAdminRoute(false);
-    window.history.pushState({}, '', '/');
-  };
-
-  const [adminPasswordInput, setAdminPasswordInput] = useState('');
-  const [showAdminPassword, setShowAdminPassword] = useState(false);
-  const [adminAuthError, setAdminAuthError] = useState('');
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
-    return currentUser?.role === 'admin' || currentUser?.email === 'markjuckerbark4@gmail.com';
-  });
-
-  const handleAdminLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (adminPasswordInput.trim() === 'ESA006##@@') {
-      quickDemoLogin('admin');
-      setIsAdminAuthenticated(true);
-      setAdminAuthError('');
-    } else {
-      setAdminAuthError('ভুল পাসওয়ার্ড! সঠিক এডমিন পাসওয়ার্ড লিখুন।');
-    }
-  };
-
-  // If not authenticated as admin, show dedicated Admin Security Gate
-  if (!isAdminAuthenticated && currentUser?.role !== 'admin' && currentUser?.email !== 'markjuckerbark4@gmail.com') {
+  // Dedicated Password Gate (Single Password option ESA006##@@)
+  if (!isAdminAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+      <div className="min-h-screen bg-[#050a17] text-slate-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm bg-[#091122] border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
           <div className="text-center space-y-2">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/10">
-              <Shield className="w-7 h-7" />
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/10">
+              <Shield className="w-7 h-7 stroke-[2.2]" />
             </div>
-            <h2 className="font-extrabold text-base text-white tracking-tight">
+            <h2 className="font-extrabold text-base text-white tracking-tight uppercase">
               LG LEADER BD · ADMIN PORTAL
             </h2>
             <p className="text-xs text-slate-400">
@@ -304,14 +334,14 @@ export const AdminPanel: React.FC = () => {
                     if (adminAuthError) setAdminAuthError('');
                   }}
                   placeholder="পাসওয়ার্ড লিখুন..."
-                  className="w-full pl-3 pr-10 py-2.5 bg-slate-800 rounded-xl border border-slate-700 text-white font-mono text-sm tracking-wider focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full pl-3.5 pr-10 py-3 bg-[#0d162a] rounded-xl border border-slate-700 text-white font-mono text-sm tracking-wider focus:outline-none focus:ring-2 focus:ring-amber-500"
                   autoFocus
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowAdminPassword(!showAdminPassword)}
-                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200"
+                  className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-200"
                   tabIndex={-1}
                 >
                   <Eye className="w-4 h-4" />
@@ -321,7 +351,7 @@ export const AdminPanel: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 rounded-xl font-extrabold text-xs uppercase shadow-md active:scale-[0.98] transition-all"
+              className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 rounded-xl font-black text-xs uppercase shadow-lg shadow-amber-500/20 active:scale-[0.98] transition-all"
             >
               এডমিন প্যানেলে প্রবেশ করুন
             </button>
@@ -342,348 +372,385 @@ export const AdminPanel: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col max-w-md mx-auto relative pb-20">
-      {/* Top Admin Header */}
-      <div className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-md border-b border-slate-800 px-3.5 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleExitAdmin}
-            className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition-colors"
-            title="Back to App"
-          >
-            <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-          </button>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <Shield className="w-4 h-4 text-amber-400" />
-              <h1 className="font-extrabold text-sm text-white tracking-tight">
-                ADMIN CONTROL PANEL
-              </h1>
+    <div className="min-h-screen bg-[#050a17] text-slate-100 flex flex-col max-w-md mx-auto relative pb-16 font-sans">
+      {/* 1. TOP HEADER (Exact Screenshot Layout) */}
+      <div className="sticky top-0 z-30 bg-[#060b17]/95 backdrop-blur-md border-b border-slate-800/80 px-3.5 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            {/* Orange/Amber Shield Squircle */}
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 p-0.5 shadow-md shadow-amber-500/20 flex items-center justify-center shrink-0">
+              <div className="w-full h-full bg-[#091122] rounded-[14px] flex items-center justify-center">
+                <Shield className="w-5 h-5 text-amber-400 stroke-[2.2]" />
+              </div>
             </div>
-            <p className="text-[10px] text-slate-400 font-medium">
-              LG LEADER BD · Full Authority
-            </p>
+            <div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h1 className="font-extrabold text-[12.5px] tracking-tight text-white uppercase leading-none">
+                  LG LEADER BD ADMIN PANEL
+                </h1>
+                <span className="bg-red-950/90 border border-red-800/80 text-red-400 font-mono text-[9px] px-1 py-0.2 rounded font-bold">
+                  /admin
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                মাস্টার টুর্নামেন্ট ও ওয়েবসাইট নিয়ন্ত্রণ কেন্দ্র
+              </p>
+            </div>
+          </div>
+
+          {/* Right Top Action Buttons */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Sky Blue Website Button */}
+            <button
+              onClick={handleExitAdmin}
+              className="px-2.5 py-1.5 bg-[#0088ff] hover:bg-sky-500 text-white rounded-xl text-[11px] font-extrabold flex items-center gap-1 shadow-sm active:scale-95 transition-all"
+              title="ওয়েবসাইটে যান"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>ওয়েবসাইট</span>
+            </button>
+            
+            {/* Dark Red Logout Button */}
+            <button
+              onClick={handleLogoutAdmin}
+              className="px-2 py-1.5 bg-[#2a0e14] hover:bg-red-950 text-red-400 border border-red-900/60 rounded-xl text-[11px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+              title="লগআউট"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>লগআউট</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-3.5 space-y-4 flex-1">
+        {/* 2. TOP 6-TILE CONTROL GRID (2 cols x 3 rows) */}
+        <div className="bg-[#091122] border border-slate-800/80 rounded-3xl p-3 shadow-xl">
+          <div className="grid grid-cols-2 gap-2.5">
+            {[
+              { id: 'tournaments', label: 'Tournament Control', icon: Trophy },
+              { id: 'players', label: 'Player Management', icon: Users },
+              { 
+                id: 'payments', 
+                label: 'bKash/Nagad Payment', 
+                icon: CreditCard,
+                badge: pendingTransactionsCount > 0 ? pendingTransactionsCount : undefined 
+              },
+              { id: 'room', label: 'Room ID ও Pass', icon: Key },
+              { id: 'results', label: 'Result Management', icon: Trophy },
+              { id: 'settings', label: 'Website Settings', icon: SettingsIcon },
+            ].map((tile) => {
+              const Icon = tile.icon;
+              const isActive = activeTile === tile.id;
+              return (
+                <button
+                  key={tile.id}
+                  onClick={() => setActiveTile(tile.id as AdminTab)}
+                  className={`relative rounded-2xl py-3 px-2 flex flex-col items-center justify-center gap-1.5 text-xs transition-all active:scale-[0.98] ${
+                    isActive
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black shadow-lg shadow-amber-500/25 ring-1 ring-amber-400'
+                      : 'bg-[#0c162d]/60 hover:bg-[#0c162d] text-slate-400 hover:text-slate-200 border border-slate-800/70 font-semibold'
+                  }`}
+                >
+                  {tile.badge && (
+                    <span className="absolute -top-1 -right-1 px-1.5 py-0.2 bg-red-600 text-white rounded-full text-[9px] font-black animate-pulse shadow-md">
+                      {tile.badge}
+                    </span>
+                  )}
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-slate-950 stroke-[2.5]' : 'text-slate-400'}`} />
+                  <span className="text-[11px] leading-tight text-center">{tile.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <button
-          onClick={handleExitAdmin}
-          className="px-2.5 py-1 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold"
-        >
-          View App
-        </button>
-      </div>
+        {/* 3. TILE CONTENT VIEW */}
 
-      {/* Admin Subnav Tabs */}
-      <div className="flex items-center overflow-x-auto bg-slate-950 border-b border-slate-800 p-1.5 scrollbar-none text-xs font-semibold gap-1">
-        {[
-          { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
-          { id: 'matches', label: 'Matches', icon: Swords },
-          { id: 'results', label: 'Results', icon: Trophy },
-          { id: 'transactions', label: `Transactions ${pendingTransactionsCount > 0 ? `(${pendingTransactionsCount})` : ''}`, icon: CreditCard },
-          { id: 'users', label: 'Users', icon: Users },
-          { id: 'settings', label: 'Settings', icon: SettingsIcon },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeAdminTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveAdminTab(tab.id as typeof activeAdminTab)}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 transition-colors ${
-                isActive
-                  ? 'bg-blue-600 text-white font-bold shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* CONTENT AREA */}
-      <div className="p-3.5 flex-1 space-y-4">
-        {/* 1. DASHBOARD */}
-        {activeAdminTab === 'dashboard' && (
-          <div className="space-y-4">
-            {/* KPI Cards */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-slate-800/80 rounded-2xl border border-slate-700/80 space-y-1">
-                <div className="flex items-center justify-between text-slate-400 text-xs">
-                  <span>মোট ইউজার</span>
-                  <Users className="w-4 h-4 text-blue-400" />
-                </div>
-                <div className="text-xl font-extrabold text-white tabular-nums">
-                  {totalUsersCount}
-                </div>
-                <span className="text-[10px] text-blue-400 font-semibold block">রেজিস্টার্ড প্লেয়ার</span>
-              </div>
-
-              <div className="p-3 bg-slate-800/80 rounded-2xl border border-slate-700/80 space-y-1">
-                <div className="flex items-center justify-between text-slate-400 text-xs">
-                  <span>লাইভ ম্যাচ</span>
-                  <Swords className="w-4 h-4 text-emerald-400" />
-                </div>
-                <div className="text-xl font-extrabold text-white tabular-nums">
-                  {liveActiveMatchesCount}
-                </div>
-                <span className="text-[10px] text-emerald-400 font-semibold block">চলমান টুর্নামেন্ট</span>
-              </div>
-
-              <div className="p-3 bg-slate-800/80 rounded-2xl border border-slate-700/80 space-y-1">
-                <div className="flex items-center justify-between text-slate-400 text-xs">
-                  <span>মোট ডিপোজিট</span>
-                  <DollarSign className="w-4 h-4 text-emerald-400" />
-                </div>
-                <div className="text-xl font-extrabold text-emerald-400 tabular-nums">
-                  ৳{totalApprovedDeposits}
-                </div>
-                <span className="text-[10px] text-slate-400 font-semibold block">সফল জমা</span>
-              </div>
-
-              <div className="p-3 bg-slate-800/80 rounded-2xl border border-slate-700/80 space-y-1">
-                <div className="flex items-center justify-between text-slate-400 text-xs">
-                  <span>মোট উত্তোলন</span>
-                  <CreditCard className="w-4 h-4 text-amber-400" />
-                </div>
-                <div className="text-xl font-extrabold text-amber-400 tabular-nums">
-                  ৳{totalApprovedWithdrawals}
-                </div>
-                <span className="text-[10px] text-slate-400 font-semibold block">ক্যাশ আউট পরিশোধ</span>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="p-3.5 bg-slate-800/90 rounded-2xl border border-slate-700 space-y-2.5">
-              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400">
-                কুইক এডমিন অ্যাকশন
-              </h3>
-              <div className="grid grid-cols-2 gap-2 text-xs font-bold">
-                <button
-                  onClick={() => {
-                    setActiveAdminTab('matches');
-                    handleOpenCreateMatch();
-                  }}
-                  className="py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>নতুন ম্যাচ তৈরি</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveAdminTab('transactions')}
-                  className="py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl flex items-center justify-center gap-1.5"
-                >
-                  <CreditCard className="w-4 h-4" />
-                  <span>পেন্ডিং ট্রানজেকশন ({pendingTransactionsCount})</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 2. MATCH MANAGER */}
-        {activeAdminTab === 'matches' && (
+        {/* --- TILE 1: TOURNAMENT CONTROL (Matches Screenshot) --- */}
+        {activeTile === 'tournaments' && (
           <div className="space-y-3.5">
-            <div className="flex items-center justify-between">
-              <h2 className="font-extrabold text-sm text-white">ম্যাচ পরিচালনা ({matches.length})</h2>
-              <button
-                onClick={handleOpenCreateMatch}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>ম্যাচ যোগ করুন</span>
-              </button>
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+              <input
+                type="text"
+                value={tournamentSearch}
+                onChange={(e) => setTournamentSearch(e.target.value)}
+                placeholder="টুর্নামেন্টের নাম বা ক্যাটাগরি সার্চ করুন..."
+                className="w-full pl-10 pr-4 py-3 bg-[#091122] rounded-2xl border border-slate-800/90 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-500/80"
+              />
             </div>
 
-            <div className="space-y-3">
-              {matches.map((m) => (
-                <div
-                  key={m.id}
-                  className="bg-slate-800/90 rounded-2xl border border-slate-700 p-3 space-y-2.5"
+            {/* Big Yellow/Orange CTA Button */}
+            <button
+              onClick={handleOpenCreateMatch}
+              className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-sm rounded-2xl shadow-lg shadow-amber-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>নতুন টুর্নামেন্ট তৈরি করুন</span>
+            </button>
+
+            {/* Filter Pills Tab Bar */}
+            <div className="flex items-center gap-2 border-b border-slate-800/70 pb-2.5 overflow-x-auto scrollbar-none">
+              {[
+                { id: 'all', label: 'সব টুর্নামেন্ট' },
+                { id: 'upcoming', label: 'Upcoming' },
+                { id: 'ongoing', label: 'Ongoing' },
+                { id: 'completed', label: 'Completed' },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setTournamentFilter(f.id as any)}
+                  className={`px-3 py-1.5 rounded-full text-xs transition-all whitespace-nowrap ${
+                    tournamentFilter === f.id
+                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50 font-black shadow-xs'
+                      : 'text-slate-400 hover:text-slate-200 font-semibold'
+                  }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9.5px] uppercase font-bold bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded">
-                          {m.category.toUpperCase()}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-semibold">{m.map}</span>
-                      </div>
-                      <h4 className="font-extrabold text-xs text-white mt-1 leading-tight">{m.title}</h4>
-                      <p className="text-[10.5px] text-slate-400 font-mono mt-0.5">
-                        Fee: ৳{m.entryFee} · Win: ৳{m.winPrize} · Kill: ৳{m.perKill}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleOpenEditMatch(m)}
-                        className="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200"
-                        title="Edit Match"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => deleteMatch(m.id)}
-                        className="p-1.5 rounded-lg bg-red-900/40 hover:bg-red-800/60 text-red-300"
-                        title="Delete Match"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-700/60">
-                    <span className="text-[11px] text-slate-400">
-                      বুকিং: <strong className="text-white">{m.bookedSlots}/{m.totalSlots}</strong>
-                    </span>
-
-                    <button
-                      onClick={() => {
-                        setRoomModalMatchId(m.id);
-                        setRoomIdInput(m.roomId || '');
-                        setRoomPassInput(m.roomPassword || '');
-                      }}
-                      className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-[10.5px] font-bold flex items-center gap-1"
-                    >
-                      <Lock className="w-3 h-3" />
-                      <span>{m.roomId ? 'রুম আপডেট' : 'রুম কোড দিন'}</span>
-                    </button>
-                  </div>
-                </div>
+                  {f.label}
+                </button>
               ))}
             </div>
-          </div>
-        )}
 
-        {/* 3. RESULT & WINNER DECLARATION */}
-        {activeAdminTab === 'results' && (
-          <div className="bg-slate-800/90 rounded-2xl border border-slate-700 p-4 space-y-4">
-            <div>
-              <h2 className="font-extrabold text-sm text-white flex items-center gap-1.5">
-                <Trophy className="w-4 h-4 text-amber-400" />
-                <span>ফলাফল ও বিজয়ী ঘোষণা (Auto Distribution)</span>
-              </h2>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                ফলাফল প্রকাশ করলে বিজয়ী ও স্কোরবোর্ডের প্লেয়ারদের গেম একাউন্টে সরাসরি ক্যাশ চলে যাবে!
-              </p>
+            {/* Match Cards List */}
+            <div className="space-y-3">
+              {filteredMatches.length === 0 ? (
+                <div className="py-10 text-center bg-[#091122] rounded-2xl border border-slate-800/80 p-5 space-y-2">
+                  <Trophy className="w-8 h-8 text-slate-600 mx-auto" />
+                  <p className="text-xs text-slate-400 font-medium">কোনো টুর্নামেন্ট পাওয়া যায়নি</p>
+                  <p className="text-[11px] text-slate-500">
+                    উপরের <strong className="text-amber-400">"+ নতুন টুর্নামেন্ট তৈরি করুন"</strong> বাটনে ক্লিক করে নতুন টুর্নামেন্ট যোগ করুন।
+                  </p>
+                </div>
+              ) : (
+                filteredMatches.map((m) => {
+                  const matchNumber = m.id.replace('match_', '').replace(/[^0-9]/g, '') || '101';
+                  const isUpcoming = m.status === 'upcoming';
+                  const isOngoing = m.status === 'ongoing';
+                  const isCancelled = m.status === 'cancelled';
+
+                  return (
+                    <div
+                      key={m.id}
+                      className="bg-[#091122] border border-slate-800/90 rounded-2xl p-3.5 space-y-2.5 shadow-md"
+                    >
+                      {/* Top Badges Row */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] font-black px-2 py-0.5 rounded-md uppercase">
+                            {m.category === 'cs4v4' ? 'CS 4 VS 4' : m.category.toUpperCase()}
+                          </span>
+                          <span className="text-slate-300 font-bold text-xs font-mono">
+                            Match #{matchNumber}
+                          </span>
+                        </div>
+
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase ${
+                          isCancelled
+                            ? 'bg-red-500/20 text-red-400 border border-red-500/40'
+                            : isOngoing
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                            : m.status === 'completed'
+                            ? 'bg-slate-700/40 text-slate-400 border border-slate-600'
+                            : 'bg-sky-500/20 text-sky-400 border border-sky-500/40'
+                        }`}>
+                          {m.status.toUpperCase()}
+                        </span>
+                      </div>
+
+                      {/* Title */}
+                      <h3 className="font-extrabold text-sm text-white">
+                        {m.title}
+                      </h3>
+
+                      {/* Details Row 1 */}
+                      <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span>
+                          সময়: <strong className="text-slate-200">{m.scheduleTime}</strong>
+                        </span>
+                        <span>
+                          ম্যাপ: <strong className="text-slate-200">{m.map}</strong>
+                        </span>
+                        <span>
+                          এন্ট্রি ফি: <strong className="text-amber-400 font-bold">৳{m.entryFee}</strong>
+                        </span>
+                      </div>
+
+                      {/* Stats Row 2 */}
+                      <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800/60">
+                        <span>
+                          টোটাল প্রাইজ: <strong className="text-sky-400 font-bold">৳{m.totalPrize || m.winPrize}</strong>
+                        </span>
+                        <span>
+                          স্লট বুকিং: <strong className="text-white font-bold">{m.bookedSlots}/{m.totalSlots}</strong>
+                        </span>
+                      </div>
+
+                      {/* Action Buttons Row */}
+                      <div className="flex items-center gap-2 pt-1.5 border-t border-slate-800/80">
+                        {/* Edit Button (Sky Blue) */}
+                        <button
+                          onClick={() => handleOpenEditMatch(m)}
+                          className="flex-1 py-1.5 bg-sky-500/20 hover:bg-sky-500/30 text-sky-400 border border-sky-500/40 rounded-xl font-bold text-xs flex items-center justify-center gap-1 active:scale-95 transition-all"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+
+                        {/* Room Credentials Shortcut */}
+                        {(isUpcoming || isOngoing) && (
+                          <button
+                            onClick={() => {
+                              setRoomModalMatchId(m.id);
+                              setRoomIdInput(m.roomId || '');
+                              setRoomPassInput(m.roomPassword || '');
+                            }}
+                            className="px-2.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl font-bold text-xs flex items-center gap-1"
+                            title="রুম আইডি ও পাসওয়ার্ড"
+                          >
+                            <Key className="w-3.5 h-3.5" />
+                            <span>Room</span>
+                          </button>
+                        )}
+
+                        {/* Cancel Button (Dark Red) */}
+                        {!isCancelled && (
+                          <button
+                            onClick={() => handleCancelMatch(m.id)}
+                            className="flex-1 py-1.5 bg-red-950/60 hover:bg-red-900/60 text-red-400 border border-red-800/60 rounded-xl font-bold text-xs flex items-center justify-center gap-1 active:scale-95 transition-all"
+                          >
+                            <Slash className="w-3.5 h-3.5" />
+                            <span>Cancel</span>
+                          </button>
+                        )}
+
+                        {/* Trash Button */}
+                        <button
+                          onClick={() => {
+                            if (window.confirm('টুর্নামেন্টটি পার্মানেন্টলি ডিলিট করতে চান?')) {
+                              deleteMatch(m.id);
+                            }
+                          }}
+                          className="p-2 rounded-xl bg-slate-800/80 hover:bg-red-950 text-slate-400 hover:text-red-400 border border-slate-700/80 transition-colors"
+                          title="মুছে ফেলুন"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
-
-            {publishFeedback && (
-              <div className="p-3 rounded-xl bg-blue-900/50 border border-blue-500/40 text-blue-200 text-xs">
-                {publishFeedback}
-              </div>
-            )}
-
-            <form onSubmit={handlePublishResultsSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-slate-300 block mb-1">
-                  ম্যাচ নির্বাচন করুন <span className="text-red-400">*</span>
-                </label>
-                <select
-                  value={selectedResultMatchId}
-                  onChange={(e) => {
-                    setSelectedResultMatchId(e.target.value);
-                    const selected = matches.find((m) => m.id === e.target.value);
-                    if (selected) {
-                      setWinnerPrize(selected.winPrize);
-                      // Pre-fill participants into scoreboard if any
-                      if (selected.participants.length > 0) {
-                        const newBoard: ScoreboardEntry[] = selected.participants.map((p, idx) => ({
-                          rank: idx + 1,
-                          playerName: p.userName,
-                          ign: p.ffIgn,
-                          ffUid: p.ffUid,
-                          kills: idx === 0 ? 5 : 2,
-                          winningAmount: idx === 0 ? selected.winPrize : 20
-                        }));
-                        setScoreboardEntries(newBoard);
-                        setWinnerName(selected.participants[0]?.userName || '');
-                        setWinnerIgn(selected.participants[0]?.ffIgn || '');
-                        setWinnerFfUid(selected.participants[0]?.ffUid || '');
-                      }
-                    }
-                  }}
-                  className="w-full px-3 py-2 bg-slate-900 rounded-xl border border-slate-700 text-white font-medium focus:outline-none"
-                  required
-                >
-                  <option value="">ম্যাচ সিলেক্ট করুন...</option>
-                  {matches.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.title} ({m.status})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Winner Fields */}
-              <div className="p-3 bg-slate-900/70 rounded-xl border border-slate-700/80 space-y-2.5">
-                <span className="font-bold text-amber-400 uppercase text-[10.5px] block">
-                  #1 Booyah Champion (১ম স্থান অধিকারী)
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[10px] text-slate-400 block mb-0.5">Winner IGN</label>
-                    <input
-                      type="text"
-                      value={winnerIgn}
-                      onChange={(e) => setWinnerIgn(e.target.value)}
-                      placeholder="LG_CHAMPION"
-                      className="w-full px-2.5 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-white font-semibold"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-400 block mb-0.5">Player FF UID</label>
-                    <input
-                      type="text"
-                      value={winnerFfUid}
-                      onChange={(e) => setWinnerFfUid(e.target.value)}
-                      placeholder="2849102847"
-                      className="w-full px-2.5 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-white font-semibold font-mono"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] text-slate-400 block mb-0.5">Win Prize Amount (BDT)</label>
-                  <input
-                    type="number"
-                    value={winnerPrize}
-                    onChange={(e) => setWinnerPrize(Number(e.target.value))}
-                    className="w-full px-2.5 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-emerald-400 font-extrabold"
-                    required
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 rounded-xl font-extrabold text-xs uppercase shadow-md active:scale-[0.98] transition-all"
-              >
-                ফলাফল প্রকাশ ও ক্যাশ বিতরণ করুন
-              </button>
-            </form>
           </div>
         )}
 
-        {/* 4. TRANSACTION MANAGER */}
-        {activeAdminTab === 'transactions' && (
+        {/* --- TILE 2: PLAYER MANAGEMENT --- */}
+        {activeTile === 'players' && (
           <div className="space-y-3.5">
             <div className="flex items-center justify-between">
-              <h2 className="font-extrabold text-sm text-white">ট্রানজেকশন তালিকা</h2>
+              <h2 className="font-extrabold text-sm text-white">প্লেয়ার তালিকা ({allUsers.length})</h2>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+              <input
+                type="text"
+                value={userSearchQuery}
+                onChange={(e) => setUserSearchQuery(e.target.value)}
+                placeholder="নাম, ফোন নম্বর, ইমেইল বা FF UID দিয়ে সার্চ করুন..."
+                className="w-full pl-10 pr-4 py-3 bg-[#091122] rounded-2xl border border-slate-800 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div className="space-y-2.5">
+              {filteredUsers.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-500 bg-[#091122] rounded-2xl border border-slate-800">
+                  কোনো প্লেয়ার পাওয়া যায়নি
+                </div>
+              ) : (
+                filteredUsers.map((u) => (
+                  <div
+                    key={u.id}
+                    className="p-3 bg-[#091122] rounded-2xl border border-slate-800 text-xs space-y-2"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-extrabold text-white text-xs">{u.displayName}</span>
+                          {u.role === 'admin' && (
+                            <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold text-[9px]">
+                              ADMIN
+                            </span>
+                          )}
+                          {u.isBanned && (
+                            <span className="px-1.5 py-0.2 rounded bg-red-500/20 text-red-300 font-bold text-[9px]">
+                              BANNED
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          Phone: {u.phone} · {u.email}
+                        </p>
+                        <p className="text-[10px] font-mono text-sky-400">
+                          IGN: {u.ffIgn} · UID: {u.ffUid}
+                        </p>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 block font-medium">মেইন / গেম ব্যালেন্স</span>
+                        <span className="font-bold text-white tabular-nums">
+                          ৳{u.mainBalance} / <span className="text-emerald-400">৳{u.gameBalance}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1 border-t border-slate-800/80">
+                      <button
+                        onClick={() => {
+                          setAdjustingUserId(u.id);
+                          setAdjustAmount(50);
+                        }}
+                        className="flex-1 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 shadow-sm"
+                      >
+                        <Sliders className="w-3.5 h-3.5" />
+                        <span>ব্যালেন্স সমন্বয় (Adjust)</span>
+                      </button>
+
+                      <button
+                        onClick={() => toggleBanUser(u.id)}
+                        className={`px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 ${
+                          u.isBanned
+                            ? 'bg-emerald-900/40 text-emerald-300 hover:bg-emerald-800/60'
+                            : 'bg-red-900/40 text-red-300 hover:bg-red-800/60'
+                        }`}
+                      >
+                        <Ban className="w-3.5 h-3.5" />
+                        <span>{u.isBanned ? 'Unban' : 'Ban'}</span>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* --- TILE 3: BKASH/NAGAD PAYMENT --- */}
+        {activeTile === 'payments' && (
+          <div className="space-y-3.5">
+            <div className="flex items-center justify-between">
+              <h2 className="font-extrabold text-sm text-white">পেমেন্ট রিকুয়েস্টসমূহ</h2>
               {/* Filter Pills */}
-              <div className="flex items-center gap-1 text-[11px] bg-slate-950 p-1 rounded-xl border border-slate-800">
+              <div className="flex items-center gap-1 text-[11px] bg-[#0c162d] p-1 rounded-xl border border-slate-800">
                 {(['pending', 'deposit', 'withdraw', 'all'] as const).map((filter) => (
                   <button
                     key={filter}
                     onClick={() => setTxFilter(filter)}
                     className={`px-2 py-0.5 rounded-lg capitalize ${
-                      txFilter === filter ? 'bg-blue-600 text-white font-bold' : 'text-slate-400'
+                      txFilter === filter ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400'
                     }`}
                   >
                     {filter}
@@ -694,27 +761,27 @@ export const AdminPanel: React.FC = () => {
 
             <div className="space-y-2.5">
               {filteredTransactions.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-500 bg-slate-800/40 rounded-2xl border border-slate-700/40">
+                <div className="py-8 text-center text-xs text-slate-500 bg-[#091122] rounded-2xl border border-slate-800">
                   কোনো ট্রানজেকশন পেন্ডিং নেই
                 </div>
               ) : (
                 filteredTransactions.map((tx) => (
                   <div
                     key={tx.id}
-                    className="p-3 bg-slate-800 rounded-2xl border border-slate-700 text-xs space-y-2"
+                    className="p-3 bg-[#091122] rounded-2xl border border-slate-800 text-xs space-y-2"
                   >
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center gap-1.5">
                           <span className={`px-2 py-0.5 rounded text-[9.5px] font-extrabold uppercase ${
-                            tx.type === 'deposit' ? 'bg-blue-500/20 text-blue-300' : 'bg-emerald-500/20 text-emerald-300'
+                            tx.type === 'deposit' ? 'bg-sky-500/20 text-sky-300' : 'bg-emerald-500/20 text-emerald-300'
                           }`}>
                             {tx.type === 'deposit' ? 'DEPOSIT' : 'WITHDRAW'}
                           </span>
                           <span className="font-bold text-white">{tx.userName}</span>
                         </div>
                         <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                          {tx.userPhone} · {tx.gateway}
+                          {tx.userPhone} · {tx.gateway.toUpperCase()}
                         </p>
                       </div>
 
@@ -735,27 +802,27 @@ export const AdminPanel: React.FC = () => {
                     </div>
 
                     {tx.trxId && (
-                      <div className="p-1.5 bg-slate-900 rounded-lg text-[10.5px] font-mono text-slate-300 flex items-center justify-between">
-                        <span>TrxID: {tx.trxId}</span>
+                      <div className="p-2 bg-[#0c162d] rounded-xl text-[10.5px] font-mono text-slate-300 flex items-center justify-between border border-slate-800/60">
+                        <span>TrxID: <strong className="text-amber-400">{tx.trxId}</strong></span>
                         <span className="text-slate-400 font-sans">Sender: {tx.senderNumber}</span>
                       </div>
                     )}
 
                     {tx.withdrawNumber && (
-                      <div className="p-1.5 bg-slate-900 rounded-lg text-[10.5px] font-mono text-slate-300">
-                        Payout To: {tx.withdrawNumber} ({tx.gateway})
+                      <div className="p-2 bg-[#0c162d] rounded-xl text-[10.5px] font-mono text-slate-300 border border-slate-800/60">
+                        Payout To: <strong className="text-emerald-400">{tx.withdrawNumber}</strong> ({tx.gateway})
                       </div>
                     )}
 
                     {/* Pending Action Buttons */}
                     {tx.status === 'pending' && (
-                      <div className="flex gap-2 pt-1 border-t border-slate-700/60">
+                      <div className="flex gap-2 pt-1 border-t border-slate-800/80">
                         <button
                           onClick={() => {
                             if (tx.type === 'deposit') approveDeposit(tx.id);
                             else approveWithdraw(tx.id);
                           }}
-                          className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-xs"
+                          className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-sm"
                         >
                           <Check className="w-3.5 h-3.5" />
                           <span>অনুমোদন (Approve)</span>
@@ -766,7 +833,7 @@ export const AdminPanel: React.FC = () => {
                             if (tx.type === 'deposit') rejectDeposit(tx.id, 'Wrong TrxID');
                             else rejectWithdraw(tx.id, 'Number error / Insufficient details');
                           }}
-                          className="flex-1 py-1.5 bg-red-900/60 hover:bg-red-800 text-red-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
+                          className="flex-1 py-1.5 bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800/60 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
                         >
                           <X className="w-3.5 h-3.5" />
                           <span>বাতিল (Reject)</span>
@@ -780,95 +847,191 @@ export const AdminPanel: React.FC = () => {
           </div>
         )}
 
-        {/* 5. USER MANAGEMENT WITH 3-WAY BALANCE ADJUSTER */}
-        {activeAdminTab === 'users' && (
+        {/* --- TILE 4: ROOM ID ও PASS --- */}
+        {activeTile === 'room' && (
           <div className="space-y-3.5">
-            <div className="flex items-center justify-between">
-              <h2 className="font-extrabold text-sm text-white">ব্যবহারকারী ব্যবস্থাপনা ({allUsers.length})</h2>
+            <div>
+              <h2 className="font-extrabold text-sm text-white flex items-center gap-1.5">
+                <Key className="w-4 h-4 text-amber-400" />
+                <span>কাস্টম রুম আইডি ও পাসওয়ার্ড প্রকাশ কেন্দ্র</span>
+              </h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                ম্যাচ শুরুর আগে প্লেয়ারদের জন্য রুম আইডি ও পাসওয়ার্ড দিন।
+              </p>
             </div>
 
-            {/* Search Input */}
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                value={userSearchQuery}
-                onChange={(e) => setUserSearchQuery(e.target.value)}
-                placeholder="Search by name, email, phone, UID..."
-                className="w-full pl-9 pr-3 py-2 bg-slate-800 rounded-xl border border-slate-700 text-xs text-white placeholder-slate-400 focus:outline-none"
-              />
-            </div>
-
-            {/* Users List */}
-            <div className="space-y-2.5">
-              {filteredUsers.map((u) => (
-                <div
-                  key={u.id}
-                  className="p-3 bg-slate-800 rounded-2xl border border-slate-700 text-xs space-y-2"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-white text-xs">{u.displayName}</span>
-                        {u.role === 'admin' && (
-                          <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold text-[9px]">
-                            ADMIN
-                          </span>
-                        )}
-                        {u.isBanned && (
-                          <span className="px-1.5 py-0.2 rounded bg-red-500/20 text-red-300 font-bold text-[9px]">
-                            BANNED
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        {u.email} · Phone: {u.phone}
-                      </p>
-                      <p className="text-[10px] font-mono text-blue-300">
-                        IGN: {u.ffIgn} · UID: {u.ffUid}
-                      </p>
-                    </div>
-
-                    <div className="text-right">
-                      <span className="text-[10px] text-slate-400 block font-medium">ডিপোজিট / উইনিং</span>
-                      <span className="font-bold text-white tabular-nums">
-                        ৳{u.mainBalance} / <span className="text-emerald-400">৳{u.gameBalance}</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-1 border-t border-slate-700/60">
-                    <button
-                      onClick={() => {
-                        setAdjustingUserId(u.id);
-                        setAdjustAmount(50);
-                      }}
-                      className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 shadow-xs"
-                    >
-                      <Sliders className="w-3.5 h-3.5" />
-                      <span>ব্যালেন্স সমন্বয় (Adjust)</span>
-                    </button>
-
-                    <button
-                      onClick={() => toggleBanUser(u.id)}
-                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold ${
-                        u.isBanned
-                          ? 'bg-emerald-900/40 text-emerald-300 hover:bg-emerald-800/60'
-                          : 'bg-red-900/40 text-red-300 hover:bg-red-800/60'
-                      }`}
-                    >
-                      {u.isBanned ? 'Unban' : 'Ban'}
-                    </button>
-                  </div>
+            <div className="space-y-3">
+              {matches.filter(m => m.status === 'upcoming' || m.status === 'ongoing').length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-500 bg-[#091122] rounded-2xl border border-slate-800">
+                  বর্তমানে কোনো আসন্ন বা চলমান ম্যাচ নেই
                 </div>
-              ))}
+              ) : (
+                matches
+                  .filter(m => m.status === 'upcoming' || m.status === 'ongoing')
+                  .map((m) => (
+                    <div
+                      key={m.id}
+                      className="p-3.5 bg-[#091122] rounded-2xl border border-slate-800 space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-extrabold text-white text-xs">{m.title}</h4>
+                          <span className="text-[10px] text-slate-400">{m.scheduleTime} · {m.map}</span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-[9.5px] font-bold uppercase ${
+                          m.roomId ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
+                        }`}>
+                          {m.roomId ? 'রুম প্রকাশিত' : 'রুম পেন্ডিং'}
+                        </span>
+                      </div>
+
+                      {m.roomId ? (
+                        <div className="p-2.5 bg-[#0c162d] rounded-xl border border-slate-800 font-mono text-xs flex items-center justify-between">
+                          <div>
+                            <span className="text-slate-400 text-[10px] block">Room ID:</span>
+                            <span className="text-amber-400 font-black text-sm">{m.roomId}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 text-[10px] block">Password:</span>
+                            <span className="text-sky-400 font-black text-sm">{m.roomPassword}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-slate-500 italic">এখনো রুম তথ্য দেওয়া হয়নি</p>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setRoomModalMatchId(m.id);
+                          setRoomIdInput(m.roomId || '');
+                          setRoomPassInput(m.roomPassword || '');
+                        }}
+                        className="w-full py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
+                      >
+                        <Key className="w-3.5 h-3.5" />
+                        <span>{m.roomId ? 'রুম তথ্য আপডেট করুন' : 'রুম আইডি ও পাসওয়ার্ড দিন'}</span>
+                      </button>
+                    </div>
+                  ))
+              )}
             </div>
           </div>
         )}
 
-        {/* 6. WEBSITE SETTINGS */}
-        {activeAdminTab === 'settings' && (
-          <div className="bg-slate-800/90 rounded-2xl border border-slate-700 p-4 space-y-4">
+        {/* --- TILE 5: RESULT MANAGEMENT --- */}
+        {activeTile === 'results' && (
+          <div className="bg-[#091122] rounded-2xl border border-slate-800 p-4 space-y-4">
+            <div>
+              <h2 className="font-extrabold text-sm text-white flex items-center gap-1.5">
+                <Trophy className="w-4 h-4 text-amber-400" />
+                <span>ফলাফল ও বিজয়ী ঘোষণা (Auto Distribution)</span>
+              </h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                ফলাফল প্রকাশ করলে বিজয়ী ও স্কোরবোর্ডের প্লেয়ারদের গেম একাউন্টে সরাসরি ক্যাশ চলে যাবে!
+              </p>
+            </div>
+
+            {publishFeedback && (
+              <div className="p-3 rounded-xl bg-sky-950/80 border border-sky-500/40 text-sky-200 text-xs">
+                {publishFeedback}
+              </div>
+            )}
+
+            <form onSubmit={handlePublishResultsSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">
+                  ম্যাচ নির্বাচন করুন <span className="text-red-400">*</span>
+                </label>
+                <select
+                  value={selectedResultMatchId}
+                  onChange={(e) => {
+                    setSelectedResultMatchId(e.target.value);
+                    const selected = matches.find((m) => m.id === e.target.value);
+                    if (selected) {
+                      setWinnerPrize(selected.winPrize);
+                      if (selected.participants && selected.participants.length > 0) {
+                        const newBoard: ScoreboardEntry[] = selected.participants.map((p, idx) => ({
+                          rank: idx + 1,
+                          playerName: p.userName,
+                          ign: p.ffIgn,
+                          ffUid: p.ffUid,
+                          kills: idx === 0 ? 5 : 2,
+                          winningAmount: idx === 0 ? selected.winPrize : 20
+                        }));
+                        setScoreboardEntries(newBoard);
+                        setWinnerName(selected.participants[0]?.userName || '');
+                        setWinnerIgn(selected.participants[0]?.ffIgn || '');
+                        setWinnerFfUid(selected.participants[0]?.ffUid || '');
+                      }
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-[#0c162d] rounded-xl border border-slate-700 text-white font-medium focus:outline-none"
+                  required
+                >
+                  <option value="">ম্যাচ সিলেক্ট করুন...</option>
+                  {matches.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.title} ({m.status})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Winner Fields */}
+              <div className="p-3 bg-[#0c162d] rounded-xl border border-slate-800 space-y-2.5">
+                <span className="font-bold text-amber-400 uppercase text-[10.5px] block">
+                  #1 Booyah Champion (১ম স্থান অধিকারী)
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Winner IGN</label>
+                    <input
+                      type="text"
+                      value={winnerIgn}
+                      onChange={(e) => setWinnerIgn(e.target.value)}
+                      placeholder="LG_CHAMPION"
+                      className="w-full px-2.5 py-1.5 bg-[#091122] rounded-lg border border-slate-700 text-white font-semibold"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Player FF UID</label>
+                    <input
+                      type="text"
+                      value={winnerFfUid}
+                      onChange={(e) => setWinnerFfUid(e.target.value)}
+                      placeholder="2849102847"
+                      className="w-full px-2.5 py-1.5 bg-[#091122] rounded-lg border border-slate-700 text-white font-semibold font-mono"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-0.5">Win Prize Amount (BDT)</label>
+                  <input
+                    type="number"
+                    value={winnerPrize}
+                    onChange={(e) => setWinnerPrize(Number(e.target.value))}
+                    className="w-full px-2.5 py-1.5 bg-[#091122] rounded-lg border border-slate-700 text-emerald-400 font-extrabold"
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 text-slate-950 rounded-xl font-black text-xs uppercase shadow-md active:scale-[0.98] transition-all"
+              >
+                ফলাফল প্রকাশ ও ক্যাশ বিতরণ করুন
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* --- TILE 6: WEBSITE SETTINGS --- */}
+        {activeTile === 'settings' && (
+          <div className="bg-[#091122] rounded-2xl border border-slate-800 p-4 space-y-4">
             <h2 className="font-extrabold text-sm text-white">ওয়েবসাইট ও পেমেন্ট নম্বর সেটিংস</h2>
 
             {settingsSavedMessage && (
@@ -885,7 +1048,7 @@ export const AdminPanel: React.FC = () => {
                   type="text"
                   value={settingsForm.siteName}
                   onChange={(e) => setSettingsForm({ ...settingsForm, siteName: e.target.value })}
-                  className="w-full px-3 py-1.5 bg-slate-900 rounded-xl border border-slate-700 text-white"
+                  className="w-full px-3 py-2 bg-[#0c162d] rounded-xl border border-slate-700 text-white"
                   required
                 />
               </div>
@@ -896,13 +1059,13 @@ export const AdminPanel: React.FC = () => {
                   rows={2}
                   value={settingsForm.marqueeNotice}
                   onChange={(e) => setSettingsForm({ ...settingsForm, marqueeNotice: e.target.value })}
-                  className="w-full px-3 py-1.5 bg-slate-900 rounded-xl border border-slate-700 text-white"
+                  className="w-full px-3 py-2 bg-[#0c162d] rounded-xl border border-slate-700 text-white"
                   required
                 />
               </div>
 
               {/* Payment Gateway Numbers */}
-              <div className="p-3 bg-slate-900 rounded-xl border border-slate-700 space-y-2">
+              <div className="p-3 bg-[#0c162d] rounded-xl border border-slate-800 space-y-2">
                 <span className="font-bold text-amber-400 uppercase text-[10px] block">
                   পেমেন্ট গেটওয়ে নম্বরসমূহ (Send Money Personal)
                 </span>
@@ -913,7 +1076,7 @@ export const AdminPanel: React.FC = () => {
                       type="text"
                       value={settingsForm.bkashNumber}
                       onChange={(e) => setSettingsForm({ ...settingsForm, bkashNumber: e.target.value })}
-                      className="w-full px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700 text-white font-mono"
+                      className="w-full px-2.5 py-1.5 bg-[#091122] rounded-lg border border-slate-700 text-white font-mono"
                     />
                   </div>
                   <div>
@@ -922,7 +1085,7 @@ export const AdminPanel: React.FC = () => {
                       type="text"
                       value={settingsForm.nagadNumber}
                       onChange={(e) => setSettingsForm({ ...settingsForm, nagadNumber: e.target.value })}
-                      className="w-full px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700 text-white font-mono"
+                      className="w-full px-2.5 py-1.5 bg-[#091122] rounded-lg border border-slate-700 text-white font-mono"
                     />
                   </div>
                   <div>
@@ -931,7 +1094,7 @@ export const AdminPanel: React.FC = () => {
                       type="text"
                       value={settingsForm.rocketNumber}
                       onChange={(e) => setSettingsForm({ ...settingsForm, rocketNumber: e.target.value })}
-                      className="w-full px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700 text-white font-mono"
+                      className="w-full px-2.5 py-1.5 bg-[#091122] rounded-lg border border-slate-700 text-white font-mono"
                     />
                   </div>
                   <div>
@@ -940,14 +1103,14 @@ export const AdminPanel: React.FC = () => {
                       type="text"
                       value={settingsForm.upayNumber}
                       onChange={(e) => setSettingsForm({ ...settingsForm, upayNumber: e.target.value })}
-                      className="w-full px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700 text-white font-mono"
+                      className="w-full px-2.5 py-1.5 bg-[#091122] rounded-lg border border-slate-700 text-white font-mono"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Financial Limits */}
-              <div className="p-3 bg-slate-900 rounded-xl border border-slate-700 space-y-2">
+              <div className="p-3 bg-[#0c162d] rounded-xl border border-slate-800 space-y-2">
                 <span className="font-bold text-amber-400 uppercase text-[10px] block">
                   আর্থিক লেনদেন সীমা (Financial Limits)
                 </span>
@@ -958,7 +1121,7 @@ export const AdminPanel: React.FC = () => {
                       type="number"
                       value={settingsForm.minDeposit}
                       onChange={(e) => setSettingsForm({ ...settingsForm, minDeposit: Number(e.target.value) })}
-                      className="w-full px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700 text-white"
+                      className="w-full px-2.5 py-1.5 bg-[#091122] rounded-lg border border-slate-700 text-white"
                     />
                   </div>
                   <div>
@@ -967,7 +1130,7 @@ export const AdminPanel: React.FC = () => {
                       type="number"
                       value={settingsForm.maxDeposit}
                       onChange={(e) => setSettingsForm({ ...settingsForm, maxDeposit: Number(e.target.value) })}
-                      className="w-full px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700 text-white"
+                      className="w-full px-2.5 py-1.5 bg-[#091122] rounded-lg border border-slate-700 text-white"
                     />
                   </div>
                   <div>
@@ -976,7 +1139,7 @@ export const AdminPanel: React.FC = () => {
                       type="number"
                       value={settingsForm.minWithdraw}
                       onChange={(e) => setSettingsForm({ ...settingsForm, minWithdraw: Number(e.target.value) })}
-                      className="w-full px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700 text-white"
+                      className="w-full px-2.5 py-1.5 bg-[#091122] rounded-lg border border-slate-700 text-white"
                     />
                   </div>
                   <div>
@@ -985,7 +1148,7 @@ export const AdminPanel: React.FC = () => {
                       type="number"
                       value={settingsForm.maxWithdrawPerDay}
                       onChange={(e) => setSettingsForm({ ...settingsForm, maxWithdrawPerDay: Number(e.target.value) })}
-                      className="w-full px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700 text-white"
+                      className="w-full px-2.5 py-1.5 bg-[#091122] rounded-lg border border-slate-700 text-white"
                     />
                   </div>
                 </div>
@@ -993,7 +1156,7 @@ export const AdminPanel: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs uppercase"
+                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-xl font-black text-xs uppercase shadow-md"
               >
                 সেটিংস সংরক্ষণ করুন
               </button>
@@ -1002,10 +1165,10 @@ export const AdminPanel: React.FC = () => {
         )}
       </div>
 
-      {/* MODAL: 3-WAY BALANCE ADJUSTMENT */}
+      {/* --- MODAL 1: 3-WAY BALANCE ADJUSTMENT --- */}
       {adjustingUserId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-3xl p-5 shadow-2xl space-y-4">
+          <div className="w-full max-w-sm bg-[#091122] border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
             <h3 className="font-extrabold text-sm text-white text-center">
               ব্যালেন্স সমন্বয় (3 Distinct Adjustments)
             </h3>
@@ -1018,7 +1181,7 @@ export const AdminPanel: React.FC = () => {
                   type="button"
                   onClick={() => setAdjustAccount('main')}
                   className={`py-1.5 rounded-xl text-xs font-bold ${
-                    adjustAccount === 'main' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'
+                    adjustAccount === 'main' ? 'bg-sky-500 text-white' : 'bg-[#0c162d] text-slate-400'
                   }`}
                 >
                   ডিপোজিট ব্যালেন্স (Main)
@@ -1027,7 +1190,7 @@ export const AdminPanel: React.FC = () => {
                   type="button"
                   onClick={() => setAdjustAccount('game')}
                   className={`py-1.5 rounded-xl text-xs font-bold ${
-                    adjustAccount === 'game' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'
+                    adjustAccount === 'game' ? 'bg-emerald-600 text-white' : 'bg-[#0c162d] text-slate-400'
                   }`}
                 >
                   উইনিং ব্যালেন্স (Game)
@@ -1043,7 +1206,7 @@ export const AdminPanel: React.FC = () => {
                   type="button"
                   onClick={() => setAdjustType('add')}
                   className={`py-1.5 rounded-lg ${
-                    adjustType === 'add' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'
+                    adjustType === 'add' ? 'bg-emerald-600 text-white' : 'bg-[#0c162d] text-slate-400'
                   }`}
                 >
                   ➕ Add (+)
@@ -1052,7 +1215,7 @@ export const AdminPanel: React.FC = () => {
                   type="button"
                   onClick={() => setAdjustType('remove')}
                   className={`py-1.5 rounded-lg ${
-                    adjustType === 'remove' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-400'
+                    adjustType === 'remove' ? 'bg-amber-600 text-white' : 'bg-[#0c162d] text-slate-400'
                   }`}
                 >
                   ➖ Remove (-)
@@ -1061,7 +1224,7 @@ export const AdminPanel: React.FC = () => {
                   type="button"
                   onClick={() => setAdjustType('set')}
                   className={`py-1.5 rounded-lg ${
-                    adjustType === 'set' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'
+                    adjustType === 'set' ? 'bg-sky-500 text-white' : 'bg-[#0c162d] text-slate-400'
                   }`}
                 >
                   ✏️ Edit (Set)
@@ -1077,7 +1240,7 @@ export const AdminPanel: React.FC = () => {
                 type="number"
                 value={adjustAmount}
                 onChange={(e) => setAdjustAmount(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-slate-800 rounded-xl border border-slate-700 text-white text-sm font-bold"
+                className="w-full px-3 py-2 bg-[#0c162d] rounded-xl border border-slate-700 text-white text-sm font-bold"
                 required
               />
             </div>
@@ -1100,7 +1263,7 @@ export const AdminPanel: React.FC = () => {
                   });
                   setAdjustingUserId(null);
                 }}
-                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md"
+                className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-black shadow-md"
               >
                 সমন্বয় করুন
               </button>
@@ -1109,12 +1272,12 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: MATCH CREATE / EDIT FORM */}
+      {/* --- MODAL 2: MATCH CREATE / EDIT FORM --- */}
       {isMatchFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
           <form
             onSubmit={handleSaveMatch}
-            className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-3xl p-5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto text-xs"
+            className="w-full max-w-sm bg-[#091122] border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto text-xs"
           >
             <h3 className="font-extrabold text-sm text-white text-center">
               {editingMatchId ? 'ম্যাচ সম্পাদনা করুন' : 'নতুন টুর্নামেন্ট তৈরি করুন'}
@@ -1126,7 +1289,8 @@ export const AdminPanel: React.FC = () => {
                 type="text"
                 value={matchTitle}
                 onChange={(e) => setMatchTitle(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-white font-bold"
+                className="w-full px-2.5 py-1.5 bg-[#0c162d] rounded-lg border border-slate-700 text-white font-bold"
+                placeholder="Ex: CS 4V4 or BERMUDA SOLO"
                 required
               />
             </div>
@@ -1137,12 +1301,12 @@ export const AdminPanel: React.FC = () => {
                 <select
                   value={matchCategory}
                   onChange={(e) => setMatchCategory(e.target.value as MatchCategory)}
-                  className="w-full px-2 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-white"
+                  className="w-full px-2 py-1.5 bg-[#0c162d] rounded-lg border border-slate-700 text-white font-bold"
                 >
+                  <option value="cs4v4">CS 4v4</option>
                   <option value="solo">Solo</option>
                   <option value="duo">Duo</option>
                   <option value="squad">Squad</option>
-                  <option value="cs4v4">CS 4v4</option>
                   <option value="lonewolf">Lone Wolf</option>
                   <option value="ludo_free">100% Free</option>
                 </select>
@@ -1154,7 +1318,8 @@ export const AdminPanel: React.FC = () => {
                   type="text"
                   value={matchMap}
                   onChange={(e) => setMatchMap(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-white"
+                  className="w-full px-2.5 py-1.5 bg-[#0c162d] rounded-lg border border-slate-700 text-white"
+                  placeholder="Bermuda / Kalahari / Purgatory"
                   required
                 />
               </div>
@@ -1167,7 +1332,7 @@ export const AdminPanel: React.FC = () => {
                   type="number"
                   value={matchEntryFee}
                   onChange={(e) => setMatchEntryFee(Number(e.target.value))}
-                  className="w-full px-2 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-white font-bold"
+                  className="w-full px-2 py-1.5 bg-[#0c162d] rounded-lg border border-slate-700 text-amber-400 font-bold"
                 />
               </div>
 
@@ -1177,7 +1342,7 @@ export const AdminPanel: React.FC = () => {
                   type="number"
                   value={matchPerKill}
                   onChange={(e) => setMatchPerKill(Number(e.target.value))}
-                  className="w-full px-2 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-white font-bold"
+                  className="w-full px-2 py-1.5 bg-[#0c162d] rounded-lg border border-slate-700 text-white font-bold"
                 />
               </div>
 
@@ -1186,8 +1351,12 @@ export const AdminPanel: React.FC = () => {
                 <input
                   type="number"
                   value={matchWinPrize}
-                  onChange={(e) => setMatchWinPrize(Number(e.target.value))}
-                  className="w-full px-2 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-emerald-400 font-bold"
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setMatchWinPrize(val);
+                    setMatchTotalPrize(val);
+                  }}
+                  className="w-full px-2 py-1.5 bg-[#0c162d] rounded-lg border border-slate-700 text-emerald-400 font-bold"
                 />
               </div>
             </div>
@@ -1199,7 +1368,7 @@ export const AdminPanel: React.FC = () => {
                   type="number"
                   value={matchTotalSlots}
                   onChange={(e) => setMatchTotalSlots(Number(e.target.value))}
-                  className="w-full px-2.5 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-white"
+                  className="w-full px-2.5 py-1.5 bg-[#0c162d] rounded-lg border border-slate-700 text-white"
                 />
               </div>
 
@@ -1209,7 +1378,8 @@ export const AdminPanel: React.FC = () => {
                   type="text"
                   value={matchScheduleTime}
                   onChange={(e) => setMatchScheduleTime(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-white"
+                  className="w-full px-2.5 py-1.5 bg-[#0c162d] rounded-lg border border-slate-700 text-white"
+                  placeholder="Today at 03:40 PM"
                 />
               </div>
             </div>
@@ -1220,7 +1390,7 @@ export const AdminPanel: React.FC = () => {
                 rows={2}
                 value={matchRules}
                 onChange={(e) => setMatchRules(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-slate-800 rounded-lg border border-slate-700 text-white"
+                className="w-full px-2.5 py-1.5 bg-[#0c162d] rounded-lg border border-slate-700 text-white"
               />
             </div>
 
@@ -1234,7 +1404,7 @@ export const AdminPanel: React.FC = () => {
               </button>
               <button
                 type="submit"
-                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md"
+                className="flex-1 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-xl font-black shadow-md"
               >
                 সংরক্ষণ করুন
               </button>
@@ -1243,12 +1413,12 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: PUBLISH ROOM ID & PASSWORD */}
+      {/* --- MODAL 3: PUBLISH ROOM ID & PASSWORD --- */}
       {roomModalMatchId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
           <form
             onSubmit={handlePublishRoom}
-            className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-3xl p-5 shadow-2xl space-y-3.5 text-xs"
+            className="w-full max-w-sm bg-[#091122] border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-3.5 text-xs"
           >
             <h3 className="font-extrabold text-sm text-white text-center">
               কাস্টম রুম আইডি ও পাসওয়ার্ড প্রকাশ
@@ -1261,7 +1431,7 @@ export const AdminPanel: React.FC = () => {
                 value={roomIdInput}
                 onChange={(e) => setRoomIdInput(e.target.value)}
                 placeholder="Ex: 8934201"
-                className="w-full px-3 py-2 bg-slate-800 rounded-xl border border-slate-700 text-white font-mono text-sm font-bold"
+                className="w-full px-3 py-2 bg-[#0c162d] rounded-xl border border-slate-700 text-amber-400 font-mono text-sm font-bold"
                 required
               />
             </div>
@@ -1273,7 +1443,7 @@ export const AdminPanel: React.FC = () => {
                 value={roomPassInput}
                 onChange={(e) => setRoomPassInput(e.target.value)}
                 placeholder="Ex: 123"
-                className="w-full px-3 py-2 bg-slate-800 rounded-xl border border-slate-700 text-white font-mono text-sm font-bold"
+                className="w-full px-3 py-2 bg-[#0c162d] rounded-xl border border-slate-700 text-sky-400 font-mono text-sm font-bold"
                 required
               />
             </div>
@@ -1288,7 +1458,7 @@ export const AdminPanel: React.FC = () => {
               </button>
               <button
                 type="submit"
-                className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl font-bold"
+                className="flex-1 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-xl font-black shadow-md"
               >
                 পাবলিশ করুন
               </button>

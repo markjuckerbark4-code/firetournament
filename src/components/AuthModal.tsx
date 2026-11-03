@@ -29,7 +29,7 @@ export const AuthModal: React.FC = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      setErrorMsg('Please enter both email and password.');
+      setErrorMsg('দয়া করে ইমেইল এবং পাসওয়ার্ড উভয়টি লিখুন।');
       return;
     }
     setIsLoading(true);
@@ -39,22 +39,22 @@ export const AuthModal: React.FC = () => {
     setIsLoading(false);
 
     if (!res.success) {
-      setErrorMsg(res.error || 'Failed to sign in.');
+      setErrorMsg(res.error || 'সাইন ইন করতে সমস্যা হয়েছে।');
     }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !phone || !ffUid || !password) {
-      setErrorMsg('Please fill in all required fields.');
+      setErrorMsg('দয়া করে সব কয়টি তথ্য সঠিকভাবে পূরণ করুন।');
       return;
     }
     if (password !== confirmPassword) {
-      setErrorMsg('Passwords do not match.');
+      setErrorMsg('পাসওয়ার্ড দুটি মেলেনি! একই পাসওয়ার্ড দিন।');
       return;
     }
     if (!agreeTerms) {
-      setErrorMsg('Please accept the Terms & Conditions.');
+      setErrorMsg('দয়া করে শর্তাবলী মেনে চলার টিক দিন।');
       return;
     }
 
@@ -118,7 +118,7 @@ export const AuthModal: React.FC = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="demo@lgleader.com"
+                  placeholder="yourname@gmail.com"
                   className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   required
                 />
@@ -128,13 +128,9 @@ export const AuthModal: React.FC = () => {
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-[11px] font-bold text-slate-700">পাসওয়ার্ড</label>
-                <button
-                  type="button"
-                  onClick={() => alert('Demo Password is: demo123')}
-                  className="text-[10px] text-blue-600 hover:underline"
-                >
-                  পাসওয়ার্ড ভুলে গেছেন?
-                </button>
+                <span className="text-[10px] text-slate-400">
+                  সঠিক পাসওয়ার্ড দিন
+                </span>
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -142,7 +138,7 @@ export const AuthModal: React.FC = () => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="demo123"
+                  placeholder="••••••••"
                   className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   required
                 />

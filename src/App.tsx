@@ -27,17 +27,26 @@ const MainAppContent: React.FC = () => {
   // Listen to hash / route changes for /admin
   useEffect(() => {
     const handleLocationCheck = () => {
-      const path = window.location.pathname.toLowerCase();
-      const hash = window.location.hash.toLowerCase();
-      const isPathAdmin = path === '/admin' || path.startsWith('/admin') || hash === '#admin' || hash.startsWith('#admin');
+      const path = (window.location.pathname || '').toLowerCase();
+      const hash = (window.location.hash || '').toLowerCase();
+      const search = (window.location.search || '').toLowerCase();
+      const href = (window.location.href || '').toLowerCase();
+      const isPathAdmin = path.includes('admin') || hash.includes('admin') || search.includes('admin') || href.includes('admin');
       setIsAdminRoute(isPathAdmin);
     };
     handleLocationCheck();
     window.addEventListener('popstate', handleLocationCheck);
     window.addEventListener('hashchange', handleLocationCheck);
+    
+    // Also poll location briefly on load to catch slow mobile URL updates
+    const timer = setInterval(handleLocationCheck, 500);
+    const timeout = setTimeout(() => clearInterval(timer), 3000);
+
     return () => {
       window.removeEventListener('popstate', handleLocationCheck);
       window.removeEventListener('hashchange', handleLocationCheck);
+      clearInterval(timer);
+      clearTimeout(timeout);
     };
   }, [setIsAdminRoute]);
 

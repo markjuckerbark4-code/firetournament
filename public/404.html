@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>LG LEADER BD - Redirecting...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function() {
+        var path = window.location.pathname.toLowerCase();
+        var search = window.location.search || '';
+        if (path.indexOf('admin') !== -1 || search.indexOf('admin') !== -1) {
+          window.location.replace('/#admin');
+        } else {
+          window.location.replace('/');
+        }
+      })();
+    </script>
+  </head>
+  <body style="background:#09101f;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;">
+    <p>Redirecting to LG LEADER BD...</p>
+  </body>
+</html>

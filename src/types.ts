@@ -3,6 +3,7 @@ export type UserRole = 'user' | 'admin';
 export interface UserProfile {
   id: string;
   email: string;
+  password?: string;
   displayName: string;
   phone: string;
   ffUid: string;
