@@ -111,7 +111,7 @@ export const AuthModal: React.FC = () => {
         {authModalMode === 'signin' ? (
           <form onSubmit={handleSignIn} className="space-y-3">
             <div>
-              <label className="text-[11px] font-bold text-slate-700 block mb-1">ইমেইল ঠিকানা</label>
+              <label className="text-[11px] font-bold text-slate-700 block mb-1">জিমেইল / ইমেইল ঠিকানা</label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 <input
@@ -184,7 +184,7 @@ export const AuthModal: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-[11px] font-bold text-slate-700 block mb-1">ইমেইল *</label>
+              <label className="text-[11px] font-bold text-slate-700 block mb-1">জিমেইল / ইমেইল *</label>
               <input
                 type="email"
                 value={email}

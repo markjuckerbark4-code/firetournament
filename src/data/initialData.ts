@@ -19,7 +19,7 @@ export const INITIAL_SETTINGS: AppSettings = {
 
 export const INITIAL_ADMIN_USER: UserProfile = {
   id: "admin_user_01",
-  email: "markjuckerbark4@gmail.com",
+  email: "esakhan5479@gmail.com",
   password: "ESA006##@@",
   displayName: "LG Leader Super Admin",
   phone: "01878901234",

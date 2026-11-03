@@ -320,17 +320,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         snapshot.forEach((docSnap) => {
           list.push({ id: docSnap.id, ...(docSnap.data() as Omit<UserProfile, 'id'>) });
         });
-        if (list.length > 0) {
-          setAllUsers((prev) => {
-            const mergedMap = new Map<string, UserProfile>();
-            // Keep admin user
-            mergedMap.set(INITIAL_ADMIN_USER.id, INITIAL_ADMIN_USER);
-            prev.forEach((u) => mergedMap.set(u.id, u));
-            list.forEach((u) => mergedMap.set(u.id, u));
-            return Array.from(mergedMap.values());
-          });
-          localStorage.setItem(STORAGE_KEYS.ALL_USERS, JSON.stringify(list));
-        }
+        setAllUsers((prev) => {
+          const mergedMap = new Map<string, UserProfile>();
+          // Keep default admin user in pool
+          mergedMap.set(INITIAL_ADMIN_USER.id, INITIAL_ADMIN_USER);
+          prev.forEach((u) => mergedMap.set(u.id, u));
+          list.forEach((u) => mergedMap.set(u.id, u));
+          const result = Array.from(mergedMap.values());
+          localStorage.setItem(STORAGE_KEYS.ALL_USERS, JSON.stringify(result));
+          return result;
+        });
       },
       (error) => {
         handleFirestoreError(error, OperationType.LIST, 'users');
@@ -356,7 +355,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               matchesJoined: 0,
               totalWon: 0,
               isBanned: false,
-              role: user.email === 'markjuckerbark4@gmail.com' ? 'admin' : 'user',
+              role: (user.email === 'esakhan5479@gmail.com' || user.email === 'markjuckerbark4@gmail.com') ? 'admin' : 'user',
               createdAt: new Date().toISOString()
             };
             return [...prev, existing];
@@ -378,22 +377,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const isAdmin = useMemo(() => {
     if (!currentUser) return false;
-    return currentUser.role === 'admin' || currentUser.email === 'markjuckerbark4@gmail.com';
+    return currentUser.role === 'admin' || 
+           currentUser.email === 'esakhan5479@gmail.com' || 
+           currentUser.email === 'markjuckerbark4@gmail.com';
   }, [currentUser]);
 
-  // Auth Operations - Strict Password Verification
+  // Auth Operations - Strict Email/Gmail & Password Verification
   const login = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedPass = pass.trim();
 
     if (!trimmedEmail) {
-      return { success: false, error: 'দয়া করে আপনার ইমেইল এড্রেস লিখুন।' };
+      return { success: false, error: 'দয়া করে আপনার জিমেইল / ইমেইল লিখুন।' };
     }
     if (!trimmedPass) {
       return { success: false, error: 'দয়া করে আপনার পাসওয়ার্ড লিখুন।' };
     }
 
-    // 1. Check allUsers in local state
+    // 1. Check allUsers in local state first
     let found = allUsers.find((u) => u.email.toLowerCase() === trimmedEmail);
 
     // 2. If not found in state, check directly from Firestore
@@ -404,7 +405,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (!snap.empty) {
           const docSnap = snap.docs[0];
           found = { id: docSnap.id, ...(docSnap.data() as Omit<UserProfile, 'id'>) };
-          setAllUsers((prev) => [...prev.filter((u) => u.id !== found!.id), found!]);
+          setAllUsers((prev) => {
+            const exists = prev.some((u) => u.id === found!.id);
+            const updated = exists ? prev.map((u) => (u.id === found!.id ? found! : u)) : [...prev, found!];
+            localStorage.setItem(STORAGE_KEYS.ALL_USERS, JSON.stringify(updated));
+            return updated;
+          });
         }
       } catch (err) {
         console.error('Firestore user lookup error:', err);
@@ -412,26 +418,36 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     // 3. Admin user fallback check
-    if (!found && trimmedEmail === INITIAL_ADMIN_USER.email.toLowerCase()) {
-      found = INITIAL_ADMIN_USER;
+    if (!found && (trimmedEmail === 'esakhan5479@gmail.com' || trimmedEmail === INITIAL_ADMIN_USER.email.toLowerCase() || trimmedEmail === 'markjuckerbark4@gmail.com')) {
+      found = {
+        ...INITIAL_ADMIN_USER,
+        email: trimmedEmail,
+      };
     }
 
     if (!found) {
-      return { success: false, error: 'এই ইমেইল দিয়ে কোনো অ্যাকাউন্ট পাওয়া যায়নি! দয়া করে Sign Up করুন।' };
+      return { 
+        success: false, 
+        error: 'এই জিমেইল দিয়ে কোনো অ্যাকাউন্ট পাওয়া যায়নি! সঠিক জিমেইল দিন অথবা নতুন একাউন্ট তৈরি (Create Account) করুন।' 
+      };
     }
 
     if (found.isBanned) {
-      return { success: false, error: 'আপনার অ্যাকাউন্টটি ব্যান করা হয়েছে। অনুগ্রহ করে হেল্পলাইনে যোগাযোগ করুন।' };
+      return { 
+        success: false, 
+        error: 'আপনার অ্যাকাউন্টটি ব্যান করা হয়েছে। অনুগ্রহ করে হেল্পলাইনে যোগাযোগ করুন।' 
+      };
     }
 
     // 4. STRICT PASSWORD VERIFICATION!
-    const expectedPassword = found.password || (found.email === INITIAL_ADMIN_USER.email ? 'ESA006##@@' : null);
+    const isAdminAccount = found.email === 'esakhan5479@gmail.com' || found.email === INITIAL_ADMIN_USER.email || found.email === 'markjuckerbark4@gmail.com';
+    const expectedPassword = found.password || (isAdminAccount ? 'ESA006##@@' : null);
 
     if (expectedPassword) {
       if (expectedPassword !== trimmedPass) {
         return { 
           success: false, 
-          error: 'ভুল পাসওয়ার্ড! সঠিক পাসওয়ার্ড দিয়ে আবার চেষ্টা করুন।' 
+          error: 'ভুল পাসওয়ার্ড! আপনার অ্যাকাউন্টের সঠিক পাসওয়ার্ড দিন।' 
         };
       }
     } else {
@@ -447,6 +463,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     setCurrentUser(found);
+    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(found));
     setIsAuthModalOpen(false);
     return { success: true };
   };
@@ -467,18 +484,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     pass: string;
     referralCode?: string;
   }): Promise<{ success: boolean; error?: string }> => {
-    const trimmed = params.email.trim().toLowerCase();
+    const trimmedEmail = params.email.trim().toLowerCase();
     const trimmedPass = params.pass.trim();
+    const trimmedName = params.name.trim();
+    const trimmedPhone = params.phone.trim();
+    const trimmedFfUid = params.ffUid.trim();
 
+    if (!trimmedEmail) {
+      return { success: false, error: 'দয়া করে আপনার জিমেইল / ইমেইল লিখুন।' };
+    }
     if (!trimmedPass || trimmedPass.length < 4) {
       return { success: false, error: 'পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে।' };
     }
+    if (!trimmedName) {
+      return { success: false, error: 'দয়া করে আপনার নাম লিখুন।' };
+    }
+    if (!trimmedPhone) {
+      return { success: false, error: 'দয়া করে আপনার মোবাইল নম্বর লিখুন।' };
+    }
+    if (!trimmedFfUid) {
+      return { success: false, error: 'দয়া করে আপনার Free Fire UID লিখুন।' };
+    }
 
     // Check if user already exists in state or Firestore
-    let existing = allUsers.find((u) => u.email.toLowerCase() === trimmed);
+    let existing = allUsers.find((u) => u.email.toLowerCase() === trimmedEmail);
     if (!existing) {
       try {
-        const q = query(collection(db, 'users'), where('email', '==', trimmed));
+        const q = query(collection(db, 'users'), where('email', '==', trimmedEmail));
         const snap = await getDocs(q);
         if (!snap.empty) {
           existing = { id: snap.docs[0].id, ...(snap.docs[0].data() as Omit<UserProfile, 'id'>) };
@@ -489,35 +521,54 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     if (existing) {
-      return { success: false, error: 'এই ইমেইল দিয়ে ইতিমধ্যে অ্যাকাউন্ট তৈরি করা আছে। দয়া করে Sign In করুন।' };
+      return { success: false, error: 'এই জিমেইল দিয়ে ইতিমধ্যে অ্যাকাউন্ট তৈরি করা আছে। দয়া করে Sign In করুন।' };
     }
 
     const newUser: UserProfile = {
-      id: `usr_${Date.now()}`,
-      email: trimmed,
+      id: `usr_${Date.now()}_${Math.floor(100 + Math.random() * 900)}`,
+      email: trimmedEmail,
       password: trimmedPass,
-      displayName: params.name.trim(),
-      phone: params.phone.trim(),
-      ffUid: params.ffUid.trim(),
-      ffIgn: params.name.trim(),
+      displayName: trimmedName,
+      phone: trimmedPhone,
+      ffUid: trimmedFfUid,
+      ffIgn: trimmedName,
       mainBalance: 50, // Welcome bonus of 50 BDT
       gameBalance: 0,
       referralCode: `LGBD${Math.floor(1000 + Math.random() * 9000)}`,
-      referredBy: params.referralCode?.trim() || undefined,
       matchesJoined: 0,
       totalWon: 0,
       isBanned: false,
-      role: trimmed === 'markjuckerbark4@gmail.com' ? 'admin' : 'user',
+      role: (trimmedEmail === 'esakhan5479@gmail.com' || trimmedEmail === 'markjuckerbark4@gmail.com') ? 'admin' : 'user',
       createdAt: new Date().toISOString()
     };
 
-    setAllUsers((prev) => [...prev, newUser]);
+    if (params.referralCode && params.referralCode.trim()) {
+      newUser.referredBy = params.referralCode.trim().toUpperCase();
+    }
+
+    // Update local state and storage immediately so admin panel and UI update without delay
+    setAllUsers((prev) => {
+      const updated = [...prev.filter((u) => u.id !== newUser.id), newUser];
+      localStorage.setItem(STORAGE_KEYS.ALL_USERS, JSON.stringify(updated));
+      return updated;
+    });
     setCurrentUser(newUser);
+    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(newUser));
     setIsAuthModalOpen(false);
 
-    // Save to Firestore Database
+    // Broadcast across tabs so Admin Panel immediately sees new user
+    broadcastSync({ allUsers: [...allUsers.filter((u) => u.id !== newUser.id), newUser] });
+
+    // Save to Firestore Database without any undefined fields
     try {
-      await setDoc(doc(db, 'users', newUser.id), newUser);
+      const cleanData: Record<string, any> = {};
+      Object.entries(newUser).forEach(([k, v]) => {
+        if (v !== undefined) {
+          cleanData[k] = v;
+        }
+      });
+      await setDoc(doc(db, 'users', newUser.id), cleanData);
+      console.log('User successfully registered & saved to Firestore users collection:', newUser.id);
     } catch (err) {
       console.error('Error saving user to Firestore:', err);
     }

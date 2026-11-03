@@ -14,6 +14,8 @@ import {
   Key,
   Search, 
   Eye,
+  EyeOff,
+  Mail,
   CheckCircle2,
   Sliders,
   ExternalLink,
@@ -93,6 +95,7 @@ export const AdminPanel: React.FC = () => {
 
   // User Management State
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [showUserPasswords, setShowUserPasswords] = useState<Record<string, boolean>>({});
   const [adjustingUserId, setAdjustingUserId] = useState<string | null>(null);
   const [adjustType, setAdjustType] = useState<'add' | 'remove' | 'set'>('add');
   const [adjustAccount, setAdjustAccount] = useState<'main' | 'game'>('main');
@@ -113,7 +116,7 @@ export const AdminPanel: React.FC = () => {
     if (typeof window !== 'undefined' && sessionStorage.getItem('admin_session_auth') === 'true') {
       return true;
     }
-    return currentUser?.role === 'admin' && currentUser?.email === 'markjuckerbark4@gmail.com';
+    return currentUser?.role === 'admin' && (currentUser?.email === 'esakhan5479@gmail.com' || currentUser?.email === 'markjuckerbark4@gmail.com');
   });
 
   const handleAdminLogin = (e: React.FormEvent) => {
@@ -429,7 +432,12 @@ export const AdminPanel: React.FC = () => {
           <div className="grid grid-cols-2 gap-2.5">
             {[
               { id: 'tournaments', label: 'Tournament Control', icon: Trophy },
-              { id: 'players', label: 'Player Management', icon: Users },
+              { 
+                id: 'players', 
+                label: 'User Management', 
+                icon: Users,
+                badge: allUsers.length > 0 ? allUsers.length : undefined
+              },
               { 
                 id: 'payments', 
                 label: 'bKash/Nagad Payment', 
@@ -646,11 +654,16 @@ export const AdminPanel: React.FC = () => {
           </div>
         )}
 
-        {/* --- TILE 2: PLAYER MANAGEMENT --- */}
+        {/* --- TILE 2: USER MANAGEMENT --- */}
         {activeTile === 'players' && (
           <div className="space-y-3.5">
             <div className="flex items-center justify-between">
-              <h2 className="font-extrabold text-sm text-white">প্লেয়ার তালিকা ({allUsers.length})</h2>
+              <div>
+                <h2 className="font-extrabold text-sm text-white">ইউজার ম্যানেজমেন্ট (User Management)</h2>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  মোট নিবন্ধিত অ্যাকাউন্ট: <strong className="text-amber-400 font-mono font-bold">{allUsers.length} জন</strong> (নতুন তৈরি হওয়া সব ডাটা এখানে সেভ থাকে)
+                </p>
+              </div>
             </div>
 
             {/* Search Input */}
@@ -660,7 +673,7 @@ export const AdminPanel: React.FC = () => {
                 type="text"
                 value={userSearchQuery}
                 onChange={(e) => setUserSearchQuery(e.target.value)}
-                placeholder="নাম, ফোন নম্বর, ইমেইল বা FF UID দিয়ে সার্চ করুন..."
+                placeholder="জিমেইল, নাম, ফোন নম্বর বা FF UID দিয়ে সার্চ করুন..."
                 className="w-full pl-10 pr-4 py-3 bg-[#091122] rounded-2xl border border-slate-800 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-500"
               />
             </div>
@@ -668,52 +681,113 @@ export const AdminPanel: React.FC = () => {
             <div className="space-y-2.5">
               {filteredUsers.length === 0 ? (
                 <div className="py-8 text-center text-xs text-slate-500 bg-[#091122] rounded-2xl border border-slate-800">
-                  কোনো প্লেয়ার পাওয়া যায়নি
+                  কোনো ইউজার পাওয়া যায়নি
                 </div>
               ) : (
                 filteredUsers.map((u) => (
                   <div
                     key={u.id}
-                    className="p-3 bg-[#091122] rounded-2xl border border-slate-800 text-xs space-y-2"
+                    className="p-3.5 bg-[#091122] rounded-2xl border border-slate-800 text-xs space-y-2.5 shadow-md"
                   >
+                    {/* User Header */}
                     <div className="flex items-start justify-between">
                       <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-extrabold text-white text-xs">{u.displayName}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-black text-white text-xs">{u.displayName}</span>
                           {u.role === 'admin' && (
-                            <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold text-[9px]">
+                            <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold text-[9px] border border-amber-500/30">
                               ADMIN
                             </span>
                           )}
-                          {u.isBanned && (
-                            <span className="px-1.5 py-0.2 rounded bg-red-500/20 text-red-300 font-bold text-[9px]">
+                          {u.isBanned ? (
+                            <span className="px-1.5 py-0.2 rounded bg-red-500/20 text-red-300 font-bold text-[9px] border border-red-500/30">
                               BANNED
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[9px]">
+                              ACTIVE
                             </span>
                           )}
                         </div>
+
+                        {/* Email / Gmail address */}
+                        <div className="flex items-center gap-1 text-[11px] text-sky-400 font-mono mt-1">
+                          <Mail className="w-3 h-3 shrink-0" />
+                          <span className="font-semibold break-all">{u.email}</span>
+                        </div>
+
                         <p className="text-[10px] text-slate-400 mt-0.5">
-                          Phone: {u.phone} · {u.email}
+                          Phone: <strong className="text-slate-300 font-mono">{u.phone}</strong>
                         </p>
-                        <p className="text-[10px] font-mono text-sky-400">
-                          IGN: {u.ffIgn} · UID: {u.ffUid}
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          IGN: <span className="text-white font-bold">{u.ffIgn}</span> · UID: <span className="text-amber-400 font-bold">{u.ffUid}</span>
                         </p>
                       </div>
 
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <span className="text-[10px] text-slate-400 block font-medium">মেইন / গেম ব্যালেন্স</span>
-                        <span className="font-bold text-white tabular-nums">
+                        <span className="font-extrabold text-white text-xs tabular-nums">
                           ৳{u.mainBalance} / <span className="text-emerald-400">৳{u.gameBalance}</span>
+                        </span>
+                        <span className="text-[9px] text-slate-400 block mt-0.5">
+                          রেফার কোড: <strong className="text-slate-300 font-mono">{u.referralCode}</strong>
                         </span>
                       </div>
                     </div>
 
+                    {/* Password Row with Show/Hide toggle */}
+                    <div className="flex items-center justify-between bg-[#060c18] border border-slate-800/90 rounded-xl px-2.5 py-1.5 text-[11px]">
+                      <div className="flex items-center gap-1.5 text-slate-400">
+                        <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span className="text-slate-400 text-[10px] font-bold">পাসওয়ার্ড:</span>
+                        <span className="font-mono font-black text-amber-300 text-xs">
+                          {showUserPasswords[u.id] ? (u.password || 'পাসওয়ার্ড সেট নেই') : '••••••••'}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowUserPasswords((prev) => ({ ...prev, [u.id]: !prev[u.id] }))}
+                        className="text-[10px] font-semibold text-slate-400 hover:text-white flex items-center gap-1 bg-slate-800/60 px-2 py-0.5 rounded-lg active:scale-95 transition-all"
+                      >
+                        {showUserPasswords[u.id] ? (
+                          <>
+                            <EyeOff className="w-3 h-3 text-red-400" />
+                            <span>লুকান</span>
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-3 h-3 text-sky-400" />
+                            <span>দেখুন</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Registration Date */}
+                    {u.createdAt && (
+                      <div className="text-[9.5px] text-slate-400 flex items-center justify-between">
+                        <span>নিবন্ধনের তারিখ:</span>
+                        <span className="text-slate-400 font-mono">
+                          {new Date(u.createdAt).toLocaleDateString('bn-BD', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
                     <div className="flex items-center gap-2 pt-1 border-t border-slate-800/80">
                       <button
                         onClick={() => {
                           setAdjustingUserId(u.id);
                           setAdjustAmount(50);
                         }}
-                        className="flex-1 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 shadow-sm"
+                        className="flex-1 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all"
                       >
                         <Sliders className="w-3.5 h-3.5" />
                         <span>ব্যালেন্স সমন্বয় (Adjust)</span>
@@ -721,10 +795,10 @@ export const AdminPanel: React.FC = () => {
 
                       <button
                         onClick={() => toggleBanUser(u.id)}
-                        className={`px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 ${
+                        className={`px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 active:scale-95 transition-all ${
                           u.isBanned
-                            ? 'bg-emerald-900/40 text-emerald-300 hover:bg-emerald-800/60'
-                            : 'bg-red-900/40 text-red-300 hover:bg-red-800/60'
+                            ? 'bg-emerald-900/40 text-emerald-300 hover:bg-emerald-800/60 border border-emerald-700/50'
+                            : 'bg-red-900/40 text-red-300 hover:bg-red-800/60 border border-red-700/50'
                         }`}
                       >
                         <Ban className="w-3.5 h-3.5" />
